@@ -1,0 +1,225 @@
+/* Custom Admin Panel Styles */
+/* Multiple selectors for maximum specificity to override Bootstrap */
+html,
+html.admin-panel,
+html body {
+    height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    max-height: none !important;
+}
+
+body,
+body.admin-page {
+    height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    background-color: #f8f9fa !important;
+    position: relative !important;
+    max-height: none !important;
+}
+
+.sidebar {
+    background-color: #212529;
+    min-height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    z-index: 1000;
+}
+
+.sidebar .nav-link {
+    color: #adb5bd;
+    padding: 0.75rem 1rem;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: #495057;
+}
+
+.main-content {
+    margin-left: 250px !important;
+    padding: 2rem !important;
+    padding-left: 4rem !important; /* Increase left padding further to ensure space from sidebar */
+    padding-bottom: 3rem !important; /* Ensure content has space at bottom when scrolling */
+    box-sizing: border-box !important;
+    min-height: 100vh !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Force Bootstrap grid to respect our spacing */
+.main-content .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* Force columns to have proper spacing */
+.main-content .row > [class*="col-"] {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+}
+
+/* Ensure stat cards have proper spacing */
+.main-content .stat-card {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Add container-like behavior to admin content */
+.main-content::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 0;
+}
+
+/* Force proper spacing for admin content sections */
+.main-content > * {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-header {
+    background-color: #fff;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    padding-left: 2rem !important; /* Add extra left padding to stat cards */
+    margin-bottom: 1rem;
+    margin-left: 1rem !important; /* Add left margin to stat cards */
+    margin-right: 1rem !important; /* Add right margin for symmetry */
+}
+
+.stat-card h3 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    margin-left: 0 !important; /* Ensure the number doesn't have extra left margin */
+    text-align: left;
+}
+
+.stat-card p {
+    margin-left: 0 !important; /* Ensure the text doesn't have extra left margin */
+    text-align: left;
+}
+
+.table-responsive {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* Mobile menu toggle button */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1001;
+    background-color: #212529;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-size: 1.2rem;
+}
+
+/* Mobile overlay */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: block;
+    }
+    
+    .sidebar {
+        margin-left: -250px;
+        transition: margin-left 0.3s ease;
+    }
+    
+    .sidebar.show {
+        margin-left: 0;
+    }
+    
+    .mobile-overlay.show {
+        display: block;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 1rem !important; /* Add padding on all sides for mobile */
+        padding-top: 4rem !important; /* Add top padding for mobile menu button */
+        padding-bottom: 2rem !important; /* Add bottom padding for scrolling */
+        overflow-y: auto !important; /* Ensure scrolling on mobile */
+    }
+    
+    /* Ensure proper spacing on mobile */
+    .main-content .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    /* Reset column padding on mobile for better use of space but maintain margins */
+    .main-content .row > [class*="col-"] {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    /* Mobile-specific stat card spacing */
+    .stat-card {
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+        padding-left: 1.5rem !important; /* Slightly less padding on mobile but still spaced */
+        padding-right: 1.5rem !important;
+    }
+}
+
+/* CRITICAL: Force scrolling - must be at end to override Bootstrap and nav.css */
+/* This uses the highest specificity possible */
+html:not(.no-scroll),
+html:not(.modal-open) {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+}
+
+body:not(.modal-open),
+body:not(.no-scroll) {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    height: 100% !important;
+    position: relative !important;
+}
+
+/* Override nav.css .main-content overflow: hidden */
+.main-content,
+div.main-content {
+    overflow: visible !important;
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+}

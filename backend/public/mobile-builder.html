@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>DevOpser - AI Website Builder</title>
+
+  <!-- Mobile Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f0f0f">
+
+  <!-- Capacitor Core (loaded conditionally for native app) -->
+  <script src="/capacitor-loader.js"></script>
+
+  <!-- Mobile API Client -->
+  <script src="/mobile-api-client.js"></script>
+
+  <!-- External Styles -->
+  <link rel="stylesheet" href="/mobile-builder.css">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading DevOpser...</div>
+  </div>
+
+  <!-- Main Builder Container -->
+  <div class="builder-container" id="builderContainer">
+    <!-- Header -->
+    <div class="app-header">
+      <div class="header-left">
+        <div class="logo">DevOpser</div>
+        <div class="tagline">AI Website Builder</div>
+      </div>
+      <div class="header-right">
+        <a href="/sites" class="my-sites-btn" id="mySitesBtn">My Sites</a>
+        <div class="user-avatar" id="userAvatar"></div>
+      </div>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome-message" id="welcomeMessage">
+        <h2>What do you want to build?</h2>
+        <p>Describe your website and watch it come to life. No coding required.</p>
+        <div class="example-prompts">
+          <button class="example-prompt" data-prompt="A landing page for an AI startup that helps developers write better code">
+            AI startup landing page
+          </button>
+          <button class="example-prompt" data-prompt="A portfolio website for a freelance photographer with a dark, elegant theme">
+            Photographer portfolio
+          </button>
+          <button class="example-prompt" data-prompt="A SaaS pricing page with three tiers: Free, Pro, and Enterprise">
+            SaaS pricing page
+          </button>
+        </div>
+      </div>
+
+      <div class="generating-indicator" id="generatingIndicator">
+        <div class="spinner"></div>
+        <span>Generating your website...</span>
+      </div>
+
+      <!-- Preview Success State -->
+      <div class="preview-success" id="previewSuccess">
+        <div class="check-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h3>Website Created!</h3>
+        <p>Your website has been generated. View it on desktop for full editing and preview.</p>
+        <div class="action-buttons">
+          <button class="primary-btn" id="continueEditingBtn">Continue Chatting</button>
+          <button class="secondary-btn" id="viewMySitesBtn">View My Sites</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <textarea
+        class="chat-input"
+        id="chatInput"
+        placeholder="Describe your website..."
+        rows="1"
+      ></textarea>
+      <button class="send-button" id="sendButton">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay" id="authModal">
+    <div class="auth-modal">
+      <!-- Email Step -->
+      <div class="auth-step active" id="authEmailStep">
+        <h2>Almost there!</h2>
+        <p class="subtitle">Enter your email to save your website</p>
+
+        <div class="error-message" id="authError"></div>
+        <div class="success-message" id="authSuccess"></div>
+
+        <div class="form-group">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" placeholder="you@example.com" required>
+        </div>
+
+        <button class="auth-button" id="authSendCodeBtn">Continue</button>
+
+        <div class="auth-divider"><span>OR</span></div>
+
+        <a href="/auth/google?mobile=true" class="google-signin-btn" id="googleSignInBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Sign in with Google
+        </a>
+      </div>
+
+      <!-- Code Step -->
+      <div class="auth-step" id="authCodeStep">
+        <h2>Check your email</h2>
+        <p class="subtitle">Enter the 6-digit code sent to <strong id="authEmailDisplay"></strong></p>
+
+        <div class="error-message" id="authCodeError"></div>
+        <div class="success-message" id="authCodeSuccess"></div>
+
+        <div class="form-group">
+          <input type="text" id="authCode" class="code-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric">
+        </div>
+
+        <button class="auth-button" id="authVerifyCodeBtn">Verify & Create Website</button>
+
+        <div class="back-link">
+          <a href="#" id="authBackBtn">Use a different email</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Builder Script -->
+  <script src="/mobile-builder.js"></script>
+</body>
+</html>

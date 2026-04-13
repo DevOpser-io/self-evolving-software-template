@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><%= typeof title !== 'undefined' ? title : 'Two-Factor Authentication' %></title>
+    <link rel="icon" href="/static/icon.png" type="image/png">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/static/css/litera-bootstrap.min.css">
+    <link rel="stylesheet" href="/static/fontawesome/all.min.css">
+    <link rel="stylesheet" href="/static/nav.css">
+    <link rel="stylesheet" href="/static/dist/bundle.css">
+    <link rel="stylesheet" href="/static/dist/mfa.css">
+    
+    <!-- JavaScript Files -->
+    <script src="/static/js/bootstrap.bundle.min.js" defer></script>
+    <script src="/static/csrf.js" defer></script>
+    
+    <%- typeof extraHead !== 'undefined' ? extraHead : '' %>
+</head>
+<body>
+    <main class="container-fluid p-0">
+        <div class="row app-container m-0">
+            <!-- Content for each page -->
+            <%- body %>
+        </div>
+    </main>
+    
+    <%- typeof extraScripts !== 'undefined' ? extraScripts : '' %>
+</body>
+</html>

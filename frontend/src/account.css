@@ -1,0 +1,152 @@
+/* frontend/src/account.css */
+/* Base styles */
+html {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    min-height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.account-page-wrapper {
+    width: 100%;
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.account-page {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+}
+
+.account-btn {
+    background-color: transparent;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: all 0.2s ease;
+}
+
+.account-btn:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Tab styles */
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 24px;
+}
+
+.tab-button {
+    padding: 12px 24px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+    opacity: 0.9;
+}
+
+.tab-button.active {
+    opacity: 1;
+    border-bottom-color: #0066cc;
+}
+
+.tab-icon {
+    font-size: 18px;
+}
+
+.tab-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Security settings styles */
+.security-settings,
+.subscription-settings {
+    padding: 20px 0;
+}
+
+.mfa-status {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+    margin-bottom: 24px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.status-badge.enabled {
+    background-color: #e6ffe6;
+    color: #006600;
+}
+
+.status-badge.disabled {
+    background-color: #ffe6e6;
+    color: #660000;
+}
+
+.mfa-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn.primary {
+    background-color: #0066cc;
+    color: white;
+}
+
+.btn.primary:hover {
+    background-color: #0052a3;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+    .modal-tabs {
+        gap: 8px;
+    }
+
+    .tab-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}

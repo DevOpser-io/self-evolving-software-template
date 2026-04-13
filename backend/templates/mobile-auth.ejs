@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Opening App...</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      color: white;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 40px 30px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 30px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    p {
+      margin: 20px 0;
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    .manual-link {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 30px;
+      background: white;
+      color: #667eea;
+      text-decoration: none;
+      border-radius: 25px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.5s, visibility 0.5s;
+    }
+    .manual-link.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+    .manual-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+</head>
+<body data-deep-link="<%= deepLink %>" data-app-link="<%= appLinkUrl %>">
+  <div class="container">
+    <h1>Opening App...</h1>
+    <div class="spinner"></div>
+    <p>If the app doesn't open automatically:</p>
+    <a href="<%= deepLink %>" class="manual-link">Tap here to open the app</a>
+  </div>
+
+  <script src="/js/mobile-auth-redirect.js"></script>
+</body>
+</html>

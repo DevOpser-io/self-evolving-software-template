@@ -1,0 +1,636 @@
+<!-- DevOpser Lite Website Builder Template -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= site ? site.name + ' - DevOpser Builder' : 'DevOpser Lite' %></title>
+  <link rel="icon" href="/static/icon.png" type="image/png">
+
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="/static/css/litera-bootstrap.min.css">
+  <link rel="stylesheet" href="/static/fontawesome/all.min.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="stylesheet" href="/static/css/builder.css">
+
+  <script src="/static/js/bootstrap.bundle.min.js" defer></script>
+</head>
+<body>
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/sites">DevOpser Lite</a>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="/sites">My Sites</a>
+            </li>
+          </ul>
+          <ul class="navbar-nav">
+            <% if (site) { %>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="status-badge status-<%= site.status %>">
+                  <i class="fa-solid fa-circle status-icon-dot"></i>
+                  <%= site.status.charAt(0).toUpperCase() + site.status.slice(1) %>
+                </span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><h6 class="dropdown-header">Site Status</h6></li>
+                <li><span class="dropdown-item-text small text-muted"><%= site.slug %>.example.com</span></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><h6 class="dropdown-header text-danger">Danger Zone</h6></li>
+                <li>
+                  <button class="dropdown-item text-danger" id="delete-site-btn">
+                    <i class="fa-solid fa-trash me-2"></i>Delete Site
+                  </button>
+                </li>
+              </ul>
+            </li>
+            <% } %>
+            <li class="nav-item">
+              <a class="nav-link" href="/account">Account</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/auth/logout">Logout</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="builder-container">
+    <!-- Sidebar with Tabs -->
+    <div class="chat-sidebar">
+      <!-- Tab Navigation -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="build">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Build</span>
+        </button>
+        <button class="sidebar-tab" data-tab="leads">
+          <i class="fa-solid fa-users"></i>
+          <span>Leads</span>
+          <span class="leads-badge hidden" id="leads-count-badge">0</span>
+        </button>
+        <button class="sidebar-tab" data-tab="settings">
+          <i class="fa-solid fa-gear"></i>
+          <span>Settings</span>
+        </button>
+      </div>
+
+      <!-- Build Tab (AI Chat) -->
+      <div class="sidebar-panel active" id="panel-build">
+        <div class="chat-header">
+          <h5><i class="fa-solid fa-comments me-2"></i>Build with AI</h5>
+          <% if (site) { %>
+          <small class="text-muted"><%= site.name %></small>
+          <% } %>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+          <% if (!site || !site.draftConfig || !site.draftConfig.sections || site.draftConfig.sections.length === 0) { %>
+          <div class="chat-message system">
+            <i class="fa-solid fa-lightbulb me-1"></i>
+            Describe your website and I'll create it for you! For example: "I want a landing page for a fitness app"
+          </div>
+          <% } else { %>
+          <div class="chat-message system">
+            <i class="fa-solid fa-circle-check me-1"></i>
+            Your site is ready! Ask me to make changes, like "make the headline more exciting" or "add a pricing section"
+          </div>
+          <% } %>
+        </div>
+
+        <div class="chat-input-container">
+          <textarea
+            id="chat-input"
+            placeholder="Describe what you want..."
+            rows="3"
+          ></textarea>
+          <div class="chat-actions">
+            <button id="send-btn" class="btn btn-primary flex-grow-1">
+              <i class="fa-solid fa-paper-plane me-1"></i> Send
+            </button>
+            <% if (site && site.draftConfig && site.draftConfig.sections && site.draftConfig.sections.length > 0) { %>
+            <button id="publish-btn" class="btn btn-success" <%= site.status === 'deploying' ? 'disabled' : '' %>>
+              <i class="fa-solid fa-rocket me-1"></i> Publish
+            </button>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leads Tab -->
+      <div class="sidebar-panel" id="panel-leads">
+        <div class="panel-header">
+          <h5><i class="fa-solid fa-users me-2"></i>Leads</h5>
+          <button class="btn btn-sm btn-outline-secondary" id="refresh-leads">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+        <div class="leads-stats" id="leads-stats">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-total">-</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-new">-</span>
+            <span class="stat-label">New</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-recent">-</span>
+            <span class="stat-label">This Week</span>
+          </div>
+        </div>
+
+        <div class="leads-filter">
+          <select id="leads-status-filter" class="form-select form-select-sm">
+            <option value="">All Leads</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="qualified">Qualified</option>
+            <option value="converted">Converted</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+
+        <div class="leads-list" id="leads-list">
+          <div class="leads-loading">
+            <i class="fa-solid fa-spinner fa-spin"></i> Loading leads...
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="sidebar-panel" id="panel-settings">
+        <div class="panel-header">
+          <h5><i class="fa-solid fa-gear me-2"></i>Settings</h5>
+        </div>
+
+        <div class="settings-content">
+          <!-- Lead Notifications Section -->
+          <div class="settings-section">
+            <h6><i class="fa-solid fa-bell me-2"></i>Lead Notifications</h6>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="lead-notification-enabled"
+                <%= site && site.leadNotificationEnabled !== false ? 'checked' : '' %>>
+              <label class="form-check-label" for="lead-notification-enabled">
+                Email me when I get a new lead
+              </label>
+            </div>
+          </div>
+
+          <!-- Auto-Responder Section -->
+          <div class="settings-section">
+            <h6><i class="fa-solid fa-reply me-2"></i>Auto-Responder</h6>
+            <p class="text-muted small">Send automatic replies to people who submit your contact form.</p>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="autoresponder-enabled"
+                <%= site && site.leadAutoresponderEnabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="autoresponder-enabled">
+                Enable auto-responder
+              </label>
+            </div>
+
+            <div class="autoresponder-fields<%= site && site.leadAutoresponderEnabled ? '' : ' hidden' %>" id="autoresponder-fields">
+
+              <div class="mb-3">
+                <label class="form-label small">Subject Line</label>
+                <input type="text" class="form-control form-control-sm" id="autoresponder-subject"
+                  value="<%= site && site.leadAutoresponderSubject ? site.leadAutoresponderSubject : 'Thank you for contacting us!' %>"
+                  placeholder="Thank you for contacting us!">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small">Reply-To Email</label>
+                <input type="email" class="form-control form-control-sm" id="lead-reply-to"
+                  value="<%= site && site.leadReplyToEmail ? site.leadReplyToEmail : '' %>"
+                  placeholder="your@email.com">
+                <div class="form-text">Replies will go to this address</div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small">Message Body</label>
+                <textarea class="form-control form-control-sm" id="autoresponder-body" rows="6"
+                  placeholder="Hi {{name}},&#10;&#10;Thank you for reaching out! We've received your message and will get back to you soon.&#10;&#10;Best regards,&#10;{{site_name}}"><%= site && site.leadAutoresponderBody ? site.leadAutoresponderBody : '' %></textarea>
+                <div class="form-text">Use {{name}}, {{email}}, {{site_name}} as placeholders</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- API Access Section -->
+          <div class="settings-section">
+            <h6><i class="fa-solid fa-key me-2"></i>API Access</h6>
+            <p class="text-muted small">Create API keys to access your leads programmatically.</p>
+            <a href="/account#api-keys" class="btn btn-outline-primary btn-sm">
+              <i class="fa-solid fa-external-link me-1"></i> Manage API Keys
+            </a>
+          </div>
+
+          <div class="settings-actions mt-4">
+            <button id="save-settings-btn" class="btn btn-primary w-100">
+              <i class="fa-solid fa-save me-1"></i> Save Settings
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Preview Area -->
+    <div class="preview-area">
+      <div class="preview-header">
+        <div class="preview-url">
+          <i class="fa-solid fa-globe"></i>
+          <% if (site) { %>
+          <span><%= site.slug %>.example.com</span>
+          <% } else { %>
+          <span>your-site.example.com</span>
+          <% } %>
+        </div>
+        <div class="preview-actions">
+          <button class="btn btn-outline-secondary btn-sm" id="refresh-preview">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+          <% if (site && site.status === 'published') { %>
+          <a href="<%= site.publicUrl %>" target="_blank" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> View Live
+          </a>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="preview-frame-container">
+        <div class="preview-frame" id="preview-frame">
+          <% if (site && site.draftConfig && site.draftConfig.sections && site.draftConfig.sections.length > 0) { %>
+          <!-- Render site preview -->
+          <div class="site-preview" id="site-preview">
+            <%
+            const config = site.draftConfig;
+            const primaryColor = config.theme?.primaryColor || '#3B82F6';
+            const secondaryColor = config.theme?.secondaryColor || '#10B981';
+            %>
+
+            <!-- Site Navigation (theme colors set via JavaScript) -->
+            <nav class="site-nav">
+              <a href="#" class="site-nav-logo" data-editable data-field="siteName"><%= config.siteName || 'My Website' %></a>
+              <ul class="site-nav-links">
+                <% if (config.navigation && config.navigation.links) { %>
+                  <% config.navigation.links.forEach((link, idx) => { %>
+                  <li><a href="#" class="<%= idx === 0 ? 'active' : '' %>"><%= link.label %></a></li>
+                  <% }) %>
+                <% } else { %>
+                  <li><a href="#" class="active">Home</a></li>
+                <% } %>
+              </ul>
+            </nav>
+
+            <%
+              // Helper to detect dark colors for text contrast
+              function isColorDarkEJS(hexColor) {
+                if (!hexColor || typeof hexColor !== 'string') return false;
+                const hex = hexColor.replace('#', '');
+                if (hex.length !== 6 && hex.length !== 3) return false;
+                let r, g, b;
+                if (hex.length === 3) {
+                  r = parseInt(hex[0] + hex[0], 16);
+                  g = parseInt(hex[1] + hex[1], 16);
+                  b = parseInt(hex[2] + hex[2], 16);
+                } else {
+                  r = parseInt(hex.substring(0, 2), 16);
+                  g = parseInt(hex.substring(2, 4), 16);
+                  b = parseInt(hex.substring(4, 6), 16);
+                }
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                return luminance < 0.5;
+              }
+            %>
+            <% config.sections.filter(s => s.visible !== false).sort((a,b) => a.order - b.order).forEach(section => { %>
+              <% if (section.type === 'hero') { %>
+              <%
+                const heroBgStart = section.content.backgroundColorStart || primaryColor;
+                const heroBgEnd = section.content.backgroundColorEnd || secondaryColor;
+                const hasCustomBg = section.content.backgroundColorStart || section.content.backgroundColorEnd;
+                const isDarkBg = hasCustomBg && (isColorDarkEJS(heroBgStart) || isColorDarkEJS(heroBgEnd));
+                const heroClass = isDarkBg ? 'section-hero dark-bg' : 'section-hero';
+                const ctaBtnClass = isDarkBg ? 'cta-btn cta-btn-white' : 'cta-btn';
+              %>
+              <div class="<%= heroClass %>" data-section-id="<%= section.id %>" data-section-type="hero" data-bg-start="<%= heroBgStart %>" data-bg-end="<%= heroBgEnd %>">
+                <h1 data-editable data-field="headline"><%= section.content.headline %></h1>
+                <p data-editable data-field="subheadline"><%= section.content.subheadline %></p>
+                <% if (section.content.ctaText) { %>
+                <a href="<%= section.content.ctaLink || '#' %>" class="<%= ctaBtnClass %>" data-editable-link data-field="ctaText" data-link-field="ctaLink"><%= section.content.ctaText %></a>
+                <% } %>
+              </div>
+              <% } else if (section.type === 'features') { %>
+              <div class="section-features" data-section-id="<%= section.id %>" data-section-type="features">
+                <h2 data-editable data-field="title"><%= section.content.title %></h2>
+                <div class="features-grid">
+                  <% (section.content.items || []).forEach((item, itemIndex) => { %>
+                  <div class="feature-item" data-item-index="<%= itemIndex %>">
+                    <div class="feature-icon" data-editable-icon data-field="items.<%= itemIndex %>.icon" data-current-icon="<%= item.icon || 'star' %>"><i class="fa-solid fa-<%= item.icon || 'star' %>"></i></div>
+                    <h3 data-editable data-field="items.<%= itemIndex %>.title"><%= item.title %></h3>
+                    <p data-editable data-field="items.<%= itemIndex %>.description"><%= item.description %></p>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% } else if (section.type === 'about') { %>
+              <div class="section-about" data-section-id="<%= section.id %>" data-section-type="about">
+                <h2 data-editable data-field="title"><%= section.content.title %></h2>
+                <p data-editable data-field="content"><%= section.content.content %></p>
+              </div>
+              <% } else if (section.type === 'testimonials') { %>
+              <div class="section-testimonials" data-section-id="<%= section.id %>" data-section-type="testimonials">
+                <h2 data-editable data-field="title"><%= section.content.title || 'Testimonials' %></h2>
+                <div class="testimonials-grid">
+                  <% (section.content.items || []).forEach((item, itemIndex) => { %>
+                  <div class="testimonial-item" data-item-index="<%= itemIndex %>">
+                    <p class="testimonial-quote" data-editable data-field="items.<%= itemIndex %>.quote">"<%= item.quote %>"</p>
+                    <p class="testimonial-author" data-editable data-field="items.<%= itemIndex %>.author"><%= item.author %></p>
+                    <% if (item.role) { %>
+                    <p class="testimonial-role" data-editable data-field="items.<%= itemIndex %>.role"><%= item.role %></p>
+                    <% } %>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% } else if (section.type === 'pricing') { %>
+              <div class="section-pricing" data-section-id="<%= section.id %>" data-section-type="pricing">
+                <h2 data-editable data-field="title"><%= section.content.title || 'Pricing' %></h2>
+                <% if (section.content.subtitle) { %>
+                <p class="pricing-subtitle" data-editable data-field="subtitle"><%= section.content.subtitle %></p>
+                <% } %>
+                <div class="pricing-grid">
+                  <% (section.content.items || []).forEach((plan, planIndex) => { %>
+                  <div class="pricing-item<%= plan.highlighted ? ' highlighted' : '' %>" data-item-index="<%= planIndex %>">
+                    <h3 class="plan-name" data-editable data-field="items.<%= planIndex %>.name"><%= plan.name %></h3>
+                    <div class="plan-price">
+                      <span data-editable data-field="items.<%= planIndex %>.price"><%= plan.price %></span>
+                      <span class="period" data-editable data-field="items.<%= planIndex %>.period"><%= plan.period || '' %></span>
+                    </div>
+                    <ul class="plan-features">
+                      <% (plan.features || []).forEach((feature, featureIndex) => { %>
+                      <li data-editable data-field="items.<%= planIndex %>.features.<%= featureIndex %>"><%= feature %></li>
+                      <% }) %>
+                    </ul>
+                    <% if (plan.ctaText) { %>
+                    <a href="<%= plan.ctaLink || '#' %>" class="pricing-cta" data-editable-link data-field="items.<%= planIndex %>.ctaText" data-link-field="items.<%= planIndex %>.ctaLink"><%= plan.ctaText %></a>
+                    <% } %>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% } else if (section.type === 'contact') { %>
+              <div class="section-contact" data-section-id="<%= section.id %>" data-section-type="contact">
+                <h2 data-editable data-field="title"><%= section.content.title %></h2>
+                <p data-editable data-field="subtitle"><%= section.content.subtitle %></p>
+                <% if (section.content.email) { %>
+                <p><i class="fa-solid fa-envelope me-2"></i><span data-editable data-field="email"><%= section.content.email %></span></p>
+                <% } %>
+              </div>
+              <% } else if (section.type === 'team') { %>
+              <div class="section-team" data-section-id="<%= section.id %>" data-section-type="team">
+                <h2 data-editable data-field="title"><%= section.content.title || 'Meet Our Team' %></h2>
+                <% if (section.content.subtitle) { %>
+                <p class="team-subtitle" data-editable data-field="subtitle"><%= section.content.subtitle %></p>
+                <% } %>
+                <div class="team-grid">
+                  <% (section.content.members || []).forEach((member, memberIndex) => { %>
+                  <div class="team-member" data-item-index="<%= memberIndex %>">
+                    <div class="team-member-photo" data-editable-image data-field="members.<%= memberIndex %>.photo">
+                      <% if (member.photo) { %>
+                      <img src="<%= member.photo %>" alt="<%= member.name %>">
+                      <% } else { %>
+                      <i class="fa-solid fa-user"></i>
+                      <% } %>
+                    </div>
+                    <h3 data-editable data-field="members.<%= memberIndex %>.name"><%= member.name || '' %></h3>
+                    <p class="role" data-editable data-field="members.<%= memberIndex %>.role"><%= member.role || '' %></p>
+                    <% if (member.bio) { %>
+                    <p class="bio" data-editable data-field="members.<%= memberIndex %>.bio"><%= member.bio %></p>
+                    <% } %>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% } else if (section.type === 'services') { %>
+              <div class="section-services" data-section-id="<%= section.id %>" data-section-type="services">
+                <h2 data-editable data-field="title"><%= section.content.title || 'Our Services' %></h2>
+                <% if (section.content.subtitle) { %>
+                <p class="services-subtitle" data-editable data-field="subtitle"><%= section.content.subtitle %></p>
+                <% } %>
+                <div class="services-grid">
+                  <% (section.content.items || []).forEach((item, itemIndex) => { %>
+                  <div class="service-card" data-item-index="<%= itemIndex %>">
+                    <% if (item.icon) { %>
+                    <div class="service-icon" data-editable-icon data-field="items.<%= itemIndex %>.icon" data-current-icon="<%= item.icon %>"><i class="fa-solid fa-<%= item.icon %>"></i></div>
+                    <% } %>
+                    <h3 data-editable data-field="items.<%= itemIndex %>.title"><%= item.title || '' %></h3>
+                    <p class="description" data-editable data-field="items.<%= itemIndex %>.description"><%= item.description || '' %></p>
+                    <% if (item.price) { %>
+                    <p class="price" data-editable data-field="items.<%= itemIndex %>.price"><%= item.price %></p>
+                    <% } %>
+                    <% if (item.ctaText) { %>
+                    <a href="<%= item.ctaLink || '#' %>" class="service-cta" data-editable-link data-field="items.<%= itemIndex %>.ctaText" data-link-field="items.<%= itemIndex %>.ctaLink"><%= item.ctaText %></a>
+                    <% } %>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% } else if (section.type === 'story') { %>
+              <div class="section-story" data-section-id="<%= section.id %>" data-section-type="story">
+                <div class="story-container<%= section.content.imagePosition === 'left' ? ' image-left' : '' %>">
+                  <div class="story-content">
+                    <h2 data-editable data-field="title"><%= section.content.title || 'Our Story' %></h2>
+                    <div class="story-text" data-editable data-field="content"><%- section.content.content || '' %></div>
+                    <% if (section.content.highlights && section.content.highlights.length > 0) { %>
+                    <div class="story-highlights">
+                      <% section.content.highlights.forEach((highlight, hIndex) => { %>
+                      <div class="story-highlight">
+                        <div class="value" data-editable data-field="highlights.<%= hIndex %>.value"><%= highlight.value || '' %></div>
+                        <div class="label" data-editable data-field="highlights.<%= hIndex %>.label"><%= highlight.label || '' %></div>
+                      </div>
+                      <% }) %>
+                    </div>
+                    <% } %>
+                  </div>
+                  <div class="story-image" data-editable-image data-field="image">
+                    <% if (section.content.image) { %>
+                    <img src="<%= section.content.image %>" alt="<%= section.content.title || 'Our Story' %>">
+                    <% } else { %>
+                    <i class="fa-solid fa-image"></i>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+              <% } else if (section.type === 'gallery') { %>
+              <div class="section-gallery" data-section-id="<%= section.id %>" data-section-type="gallery">
+                <% if (section.content.title) { %>
+                <h2 data-editable data-field="title"><%= section.content.title %></h2>
+                <% } %>
+                <% if (section.content.subtitle) { %>
+                <p class="gallery-subtitle" data-editable data-field="subtitle"><%= section.content.subtitle %></p>
+                <% } %>
+                <div class="gallery-grid cols-<%= section.content.columns || 3 %>">
+                  <% (section.content.images || []).forEach((image, imgIndex) => { %>
+                  <div class="gallery-item" data-item-index="<%= imgIndex %>" data-editable-image data-field="images.<%= imgIndex %>.url">
+                    <% if (image.url) { %>
+                    <img src="<%= image.url %>" alt="<%= image.alt || image.caption || '' %>">
+                    <% if (image.caption) { %>
+                    <div class="caption"><%= image.caption %></div>
+                    <% } %>
+                    <% } else { %>
+                    <div class="placeholder"><i class="fa-solid fa-image"></i></div>
+                    <% } %>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% } else if (section.type === 'contactForm') { %>
+              <div class="section-contactForm" data-section-id="<%= section.id %>" data-section-type="contactForm">
+                <div class="contactForm-container">
+                  <div class="contactForm-content">
+                    <h2 data-editable data-field="title"><%= section.content.title || 'Get in Touch' %></h2>
+                    <% if (section.content.subtitle) { %>
+                    <p class="form-subtitle" data-editable data-field="subtitle"><%= section.content.subtitle %></p>
+                    <% } %>
+                    <% if (section.content.contactInfo) { %>
+                    <div class="contactForm-info">
+                      <% if (section.content.contactInfo.email) { %>
+                      <div class="info-item"><i class="fa-solid fa-envelope"></i><span data-editable data-field="contactInfo.email"><%= section.content.contactInfo.email %></span></div>
+                      <% } %>
+                      <% if (section.content.contactInfo.phone) { %>
+                      <div class="info-item"><i class="fa-solid fa-phone"></i><span data-editable data-field="contactInfo.phone"><%= section.content.contactInfo.phone %></span></div>
+                      <% } %>
+                      <% if (section.content.contactInfo.address) { %>
+                      <div class="info-item"><i class="fa-solid fa-location-dot"></i><span data-editable data-field="contactInfo.address"><%= section.content.contactInfo.address %></span></div>
+                      <% } %>
+                      <% if (section.content.contactInfo.hours) { %>
+                      <div class="info-item"><i class="fa-solid fa-clock"></i><span data-editable data-field="contactInfo.hours"><%= section.content.contactInfo.hours %></span></div>
+                      <% } %>
+                    </div>
+                    <% } %>
+                  </div>
+                  <div class="contact-form">
+                    <% (section.content.fields || []).forEach(field => { %>
+                    <div class="form-group">
+                      <label><%= field.label || field.name %><%= field.required ? ' *' : '' %></label>
+                      <% if (field.type === 'textarea') { %>
+                      <textarea name="<%= field.name %>" placeholder="<%= field.placeholder || '' %>"<%= field.required ? ' required' : '' %>></textarea>
+                      <% } else if (field.type === 'select' && field.options) { %>
+                      <select name="<%= field.name %>"<%= field.required ? ' required' : '' %>>
+                        <option value=""><%= field.placeholder || 'Select...' %></option>
+                        <% field.options.forEach(opt => { %>
+                        <option value="<%= opt %>"><%= opt %></option>
+                        <% }) %>
+                      </select>
+                      <% } else { %>
+                      <input type="<%= field.type || 'text' %>" name="<%= field.name %>" placeholder="<%= field.placeholder || '' %>"<%= field.required ? ' required' : '' %>>
+                      <% } %>
+                    </div>
+                    <% }) %>
+                    <button type="submit" class="submit-btn"><%= section.content.submitButtonText || 'Send Message' %></button>
+                  </div>
+                </div>
+              </div>
+              <% } else if (section.type === 'footer') { %>
+              <div class="section-footer" data-section-id="<%= section.id %>" data-section-type="footer">
+                <p data-editable data-field="copyright"><%= section.content.copyright || '© ' + new Date().getFullYear() + ' ' + (section.content.companyName || config.siteName) %></p>
+              </div>
+              <% } %>
+            <% }) %>
+          </div>
+          <% } else { %>
+          <div class="empty-state">
+            <i class="fa-solid fa-palette"></i>
+            <h5>No preview yet</h5>
+            <p>Describe your website in the chat to get started!</p>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Link/Button Edit Popup -->
+  <div class="link-edit-popup" id="linkEditPopup">
+    <div class="popup-title">Edit Button</div>
+    <div class="form-group">
+      <label>Button Text</label>
+      <input type="text" id="linkEditText" placeholder="Button text">
+    </div>
+    <div class="form-group">
+      <label>Link URL</label>
+      <input type="text" id="linkEditUrl" placeholder="https://...">
+    </div>
+    <div class="btn-group">
+      <button type="button" class="btn-save" id="linkEditSaveBtn">Save</button>
+      <button type="button" class="btn-cancel" id="linkEditCancelBtn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Icon Picker Popup -->
+  <div class="icon-picker-popup" id="iconPickerPopup">
+    <div class="popup-title">Choose Icon</div>
+    <div class="icon-picker-grid" id="iconPickerGrid">
+      <!-- Icons will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Image Picker Modal -->
+  <div class="image-picker-modal" id="imagePickerModal">
+    <div class="image-picker-content">
+      <div class="image-picker-header">
+        <h5>Choose Image</h5>
+        <button type="button" class="btn-close" id="closeImagePicker"></button>
+      </div>
+      <div class="image-picker-body">
+        <div class="image-upload-zone" id="imageUploadZone">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <p>Drag & drop an image or click to upload</p>
+          <input type="file" id="imageFileInput" accept="image/*" hidden>
+        </div>
+        <div id="uploadProgress" class="mb-3">
+          <div class="progress">
+            <div class="progress-bar" role="progressbar"></div>
+          </div>
+        </div>
+        <h6 class="mt-3 mb-2">Your Images</h6>
+        <div class="site-images-grid" id="siteImagesGrid">
+          <!-- Images will be populated by JavaScript -->
+        </div>
+        <div id="noImagesMessage" class="text-muted text-center py-3">
+          No images uploaded yet
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server Data (CSP-compliant JSON) -->
+  <script type="application/json" id="server-data">
+  {
+    "siteId": "<%= site ? site.id : '' %>",
+    "siteData": <%- site ? JSON.stringify(site) : 'null' %>
+  }
+  </script>
+
+  <!-- Builder JavaScript (external file for CSP compliance) -->
+  <script src="/static/js/builder.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "bedrock-express-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Bedrock Express AI Chat application",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "watch": "webpack --watch --config webpack.config.js"
+  },
+  "dependencies": {
+    "marked": "^9.0.0",
+    "dompurify": "^3.0.5"
+  },
+  "devDependencies": {
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "css-loader": "^6.8.1",
+    "mini-css-extract-plugin": "^2.7.6",
+    "style-loader": "^3.3.3"
+  }
+}

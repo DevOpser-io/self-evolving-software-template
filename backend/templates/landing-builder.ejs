@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOpser - Build Your Website with AI</title>
+  <%- include('./partials/favicon') %>
+  <link rel="stylesheet" href="/static/chat-custom.css">
+  <link rel="stylesheet" href="/static/fontawesome/all.min.css">
+  <link rel="stylesheet" href="/static/css/landing-builder.css">
+  <script src="/marked.min.js" defer></script>
+  <script src="/purify.min.js" defer></script>
+</head>
+<body>
+  <div class="builder-container">
+    <!-- Chat Sidebar -->
+    <div class="chat-sidebar">
+      <div class="chat-header">
+        <div>
+          <div class="logo">DevOpser</div>
+          <div class="tagline">AI Website Builder</div>
+        </div>
+        <div class="header-right-section">
+          <a href="/sites" class="my-sites-link<%= typeof user !== 'undefined' && user ? ' show' : '' %>" id="mySitesLink">My Sites</a>
+          <div class="user-menu<%= typeof user !== 'undefined' && user ? ' authenticated' : '' %>" id="userMenu">
+            <div class="user-avatar" id="userAvatar"><%= typeof user !== 'undefined' && user && user.email ? user.email.charAt(0).toUpperCase() : '' %></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="welcome-message" id="welcomeMessage">
+          <h2>What do you want to build?</h2>
+          <p>Describe your website and watch it come to life. No coding required.</p>
+          <div class="example-prompts">
+            <button class="example-prompt" data-prompt="A landing page for an AI startup that helps developers write better code">
+              AI startup landing page
+            </button>
+            <button class="example-prompt" data-prompt="A portfolio website for a freelance photographer with a dark, elegant theme">
+              Photographer portfolio
+            </button>
+            <button class="example-prompt" data-prompt="A SaaS pricing page with three tiers: Free, Pro, and Enterprise">
+              SaaS pricing page
+            </button>
+          </div>
+        </div>
+
+        <div class="generating-indicator" id="generatingIndicator">
+          <div class="spinner"></div>
+          <span>Generating your website...</span>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+          <textarea
+            class="chat-input"
+            id="chatInput"
+            placeholder="Describe your website..."
+            rows="1"
+          ></textarea>
+          <button class="send-button" id="sendButton">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Area -->
+    <div class="preview-area">
+      <div class="preview-header">
+        <div class="preview-url" id="previewUrl">
+          <span class="dot"></span>
+          <span id="previewUrlText">your-site.example.com</span>
+        </div>
+        <div class="preview-actions">
+          <button class="preview-action-btn btn-hidden" id="editSectionsBtn">Edit Sections</button>
+          <button class="preview-action-btn primary btn-hidden" id="publishBtn">Publish</button>
+        </div>
+      </div>
+
+      <div class="preview-content" id="previewPlaceholder">
+        <div class="preview-placeholder">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+              <path d="M12 18v-3m0-3v.01M12 3l9.5 16.5H2.5L12 3z"/>
+            </svg>
+          </div>
+          <h3>Your website preview</h3>
+          <p>Start by describing what you want to build. Your website will appear here as we generate it together.</p>
+        </div>
+      </div>
+
+      <div class="preview-content-container" id="previewContentContainer">
+        <div class="preview-mode-banner" id="previewModeBanner">
+          <i class="fa-solid fa-eye"></i> Preview Mode - Sign up to save and customize
+        </div>
+        <div class="preview-inner" id="previewContent"></div>
+        <div class="floating-save-container" id="floatingSaveContainer">
+          <button class="floating-save-btn" id="floatingSaveBtn">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            Save Your Site
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay" id="authModal">
+    <div class="auth-modal">
+      <button class="auth-modal-close" id="authCloseBtn" title="Close">&times;</button>
+      <!-- Email Step -->
+      <div class="auth-step active" id="authEmailStep">
+        <h2>Save your website</h2>
+        <p class="subtitle">Enter your email to save and edit your website</p>
+
+        <div class="error-message" id="authError"></div>
+        <div class="success-message" id="authSuccess"></div>
+
+        <div class="form-group">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" placeholder="you@example.com" required>
+        </div>
+
+        <button class="auth-button" id="authSendCodeBtn">Continue</button>
+      </div>
+
+      <!-- Code Step -->
+      <div class="auth-step" id="authCodeStep">
+        <h2>Check your email</h2>
+        <p class="subtitle">Enter the 6-digit code sent to <strong id="authEmailDisplay"></strong></p>
+
+        <div class="error-message" id="authCodeError"></div>
+        <div class="success-message" id="authCodeSuccess"></div>
+
+        <div class="form-group">
+          <input type="text" id="authCode" class="code-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric">
+        </div>
+
+        <button class="auth-button" id="authVerifyCodeBtn">Verify & Create Website</button>
+
+        <div class="back-link">
+          <a href="#" id="authBackBtn">Use a different email</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server Data (CSP-compliant JSON) -->
+  <script type="application/json" id="server-data">
+  {
+    "isAuthenticated": <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>,
+    "currentUser": <%- typeof user !== 'undefined' && user ? JSON.stringify({ email: user.email }) : 'null' %>
+  }
+  </script>
+
+  <!-- Landing Builder JavaScript (external file for CSP compliance) -->
+  <script src="/static/js/landing-builder.js"></script>
+</body>
+</html>

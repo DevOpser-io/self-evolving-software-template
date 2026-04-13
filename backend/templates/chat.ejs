@@ -1,0 +1,288 @@
+<!-- EJS Chat Template - designed to work with the frontend/src/chat.js -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bedrock Express AI Chat</title>
+  <link rel="icon" href="/static/icon.png" type="image/png">
+  
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="/static/css/litera-bootstrap.min.css">
+  
+  <!-- Critical inline styles to prevent flash of unstyled content -->
+  <style nonce="<%= cspNonce %>">
+    .conversation-item {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1rem;
+      display: block;
+      text-align: left;
+      width: 100%;
+    }
+    .conversation-item:hover {
+      background-color: rgba(0,0,0,0.05);
+    }
+    .conversation-group-header {
+      font-size: 0.8rem;
+      color: #6c757d;
+      padding: 0.5rem 1rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+  
+  <!-- Remaining CSS Files -->
+  <link rel="stylesheet" href="/static/fontawesome/all.min.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="stylesheet" href="/static/flash.css">
+  <link rel="stylesheet" href="/static/dist/bundle.css">
+  
+  <!-- Custom styles to match original application -->
+  <link rel="stylesheet" href="/static/chat-custom.css">
+
+  <!-- Mobile navigation styles for CSP compliance -->
+  <link rel="stylesheet" href="/static/css/navbar-mobile.css">
+
+  <!-- JavaScript Files -->
+  <script src="/static/js/bootstrap.bundle.min.js" defer></script>
+  <script src="/static/flash.js" defer></script>
+  <script src="/static/csrf.js" defer></script>
+</head>
+<body>
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Bedrock Express AI</a>
+        
+        <!-- hamburger toggler -->
+        <button 
+          class="navbar-toggler" 
+          type="button" 
+          data-bs-toggle="collapse" 
+          data-bs-target="#navbarNav" 
+          aria-controls="navbarNav" 
+          aria-expanded="false" 
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <%- include('./partials/nav') %>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container-fluid p-0">
+    <div class="row app-container m-0">
+      <!-- Sidebar for conversation history -->
+      <div class="sidebar">
+        <div class="sidebar-content">
+          <div class="sidebar-header">
+            <span>Conversations</span>
+            <button id="new-chat-btn" class="new-chat-btn">New Chat</button>
+          </div>
+          <div class="chat-options">
+            <label class="switch" title="Temporary chats are not saved and will be lost when you leave the page.">
+              <input type="checkbox" id="temp-chat-toggle">
+              <span class="slider round"></span>
+              <span class="switch-label">Temporary Chat</span>
+            </label>
+          </div>
+          <div class="conversation-list">
+            <!-- Conversations will be loaded here dynamically -->
+          </div>
+          
+        </div>
+      </div>
+      
+      <!-- Chat area -->
+      <div class="chat-area">
+        <!-- Mobile header removed as hamburger menu is now in navbar -->
+
+        <!-- Chat messages container -->
+        <div class="chat-container">
+          <% if (typeof chat_history !== 'undefined' && chat_history.length > 0) { %>
+            <% chat_history.forEach(message => { %>
+              <div class="message-role <%= message.role === 'user' ? 'user' : '' %>">
+                <%= message.role.charAt(0).toUpperCase() + message.role.slice(1) %>
+              </div>
+              <div class="<%= message.role === 'user' ? 'user-message' : 'assistant-message' %>">
+                <% if (message.role === 'assistant') { %>
+                  <%- message.content %>
+                <% } else { %>
+                  <%= message.content %>
+                <% } %>
+              </div>
+            <% }); %>
+          <% } %>
+        </div>
+        
+        <!-- Message input form -->
+        <div class="message-input-container">
+          <form id="chat-form" class="message-form">
+            <textarea 
+              id="message-input" 
+              name="message" 
+              placeholder="Message..." 
+              required
+              rows="1"
+              aria-label="Type your message"
+            ></textarea>
+            <div class="button-group">
+              <button type="submit" id="send-btn" class="icon-button" aria-label="Send message">
+                <span>Send</span>
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+              <button type="button" id="stop-btn" class="icon-button" disabled aria-label="Stop generation">
+                <span>Stop</span>
+                <i class="fa-solid fa-stop"></i>
+              </button>
+              <button type="button" id="clear-btn" class="icon-button" aria-label="Clear chat">
+                <span>Clear</span>
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer removed to match original design -->
+
+  <!-- Seed globals and hooks before bundle.js loads -->
+  <script nonce="<%= cspNonce %>">
+    // Seed the globals first
+    window.currentConversationId = '<%= typeof conversationId !== "undefined" ? conversationId : "" %>';
+    window.isTemporaryChat = () => document.getElementById('temp-chat-toggle').checked;
+    
+    // Define a global loadConversations function that will be implemented later
+    window.loadConversations = function() {
+      // This will be overridden by the actual implementation
+      console.log('loadConversations called before implementation');
+    };
+    
+    // Wrap startStream (must be here so we catch the original)
+    const originalStartStream = window.startStream;
+    if (originalStartStream) {
+      window.startStream = (convId, onDone) => {
+        window.currentConversationId = convId;
+        originalStartStream(convId, () => { 
+          window.loadConversations(); 
+          if (onDone && typeof onDone === 'function') onDone(); 
+        });
+      };
+    }
+  </script>
+
+  <!-- Load the bundled JavaScript -->
+  <script src="/static/dist/bundle.js"></script>
+  <script src="/static/js/navbar-debug.js"></script>
+  <script src="/static/js/mobile-nav.js"></script>
+  
+  <!-- Conversation history management script -->
+  <script nonce="<%= cspNonce %>">
+    // Bootstrap the initial conversationId from the server
+    let conversationId = '<%= typeof conversationId !== "undefined" ? conversationId : "" %>';
+    const sidebarEl = document.querySelector('.conversation-list');
+    const chatContainer = document.querySelector('.chat-container');
+
+    // Helper to escape HTML
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Render the conversation list
+    // Override the global placeholder with the actual implementation
+    window.loadConversations = async function() {
+      const res = await fetch('/conversation_history', { credentials: 'same-origin' });
+      const { success, history } = await res.json();
+      if (!success) return;
+      sidebarEl.innerHTML = '';
+      for (const group of ['Today','Previous 7 Days','Previous 30 Days']) {
+        if (!history[group] || !history[group].length) continue;
+        const header = document.createElement('div');
+        header.className = 'conversation-group-header';
+        header.textContent = group;
+        sidebarEl.appendChild(header);
+        for (const conv of history[group]) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'conversation-item';
+          btn.dataset.id = conv.id;
+          btn.innerHTML = escapeHtml(conv.preview);
+          btn.addEventListener('click', () => selectConversation(conv.id));
+          sidebarEl.appendChild(btn);
+        }
+      }
+    }
+
+    // Load one conversation's messages
+    async function selectConversation(id) {
+      const res = await fetch(`/get_conversation/${id}`, { credentials: 'same-origin' });
+      const data = await res.json();
+      if (!data.success) return;
+      conversationId = data.conversation_id;
+      renderMessages(data.chat_history);
+    }
+
+    // Draw the messages in the main pane
+    function renderMessages(msgs) {
+      chatContainer.innerHTML = '';
+      for (const m of msgs) {
+        const roleDiv = document.createElement('div');
+        roleDiv.className = `message-role ${m.role==='user'?'user':''}`;
+        roleDiv.textContent = m.role.charAt(0).toUpperCase()+m.role.slice(1);
+        chatContainer.appendChild(roleDiv);
+        const b = document.createElement('div');
+        b.className = m.role==='user' ? 'user-message' : 'assistant-message';
+        b.innerHTML = m.content;       // your EJS already handles safe HTML for assistants
+        chatContainer.appendChild(b);
+      }
+      // scroll to bottom
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // New Chat / Clear handlers
+    document.getElementById('new-chat-btn').addEventListener('click', async () => {
+      const wasTemporary = document.getElementById('temp-chat-toggle').checked;
+      console.log('reset: wasTemporary=', wasTemporary);
+      const res = await fetch('/reset', { 
+        method: 'POST', 
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ wasTemporary })
+      });
+      const data = await res.json();
+      if (data.success) {
+        conversationId = data.new_conversation_id;
+        chatContainer.innerHTML = '';    // clear UI
+        if (!wasTemporary) window.loadConversations();  // only refresh sidebar for permanent chats
+      }
+    });
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      document.getElementById('new-chat-btn').click();
+    });
+
+    // Update local conversationId when it changes in the window global
+    function updateLocalConversationId() {
+      if (window.currentConversationId && window.currentConversationId !== conversationId) {
+        conversationId = window.currentConversationId;
+        console.log('Local conversationId updated from global:', conversationId);
+      }
+    }
+    
+    // Check for updates periodically (less frequently to reduce overhead)
+    setInterval(updateLocalConversationId, 2000);
+
+    // On load, populate conversation history immediately
+    // Don't wait for DOMContentLoaded as it may have already fired
+    window.loadConversations();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bedrock Chat (Dev)</title>
+
+    <!-- Mobile Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#2c3e50">
+
+    <!-- Capacitor Core (loaded conditionally for native app) -->
+    <script>
+        // Only load Capacitor in native app context
+        if (window.webkit?.messageHandlers?.bridge || window.AndroidBridge) {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@capacitor/core@5.0.0/dist/capacitor.js';
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #f5f7fa;
+            --text-color: #2c3e50;
+            --border-color: #e1e8ed;
+            --message-bg: #ffffff;
+            --user-message-bg: #3498db;
+            --ai-message-bg: #ecf0f1;
+            --header-height: 60px;
+            --input-area-height: 80px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+
+        /* App Container */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: var(--header-height);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .app-title {
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        .header-btn:active {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .header-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Chat Messages Area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: calc(var(--header-height) + 20px) 15px calc(var(--input-area-height) + 20px);
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Message Bubbles */
+        .message {
+            display: flex;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+            max-width: 85%;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: var(--user-message-bg);
+        }
+
+        .message-content {
+            background: var(--ai-message-bg);
+            padding: 12px 16px;
+            border-radius: 18px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message.user .message-content {
+            background: var(--user-message-bg);
+            color: white;
+        }
+
+        .message-text {
+            font-size: 16px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        /* Loading indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            background: var(--ai-message-bg);
+            border-radius: 18px;
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-color);
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.4; }
+            30% { opacity: 1; }
+        }
+
+        /* Input Area */
+        .input-area {
+            background: white;
+            border-top: 1px solid var(--border-color);
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            min-height: var(--input-area-height);
+        }
+
+        .message-input {
+            flex: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 12px 20px;
+            font-size: 16px;
+            outline: none;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            border-color: var(--secondary-color);
+        }
+
+        .send-btn {
+            background: var(--secondary-color);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:active {
+            transform: scale(0.9);
+        }
+
+        .send-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .send-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Side menu */
+        .side-menu {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            bottom: 0;
+            width: 280px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: left 0.3s;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .menu-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .menu-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-menu {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .conversation-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .conversation-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .conversation-item:active {
+            background: var(--background-color);
+        }
+
+        .conversation-item.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1999;
+        }
+
+        .menu-overlay.show {
+            display: block;
+        }
+
+        /* Auth Container */
+        .auth-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            z-index: 3000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-container.show {
+            display: flex;
+        }
+
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            background: var(--secondary-color);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        .auth-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .auth-subtitle {
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .google-signin-btn {
+            background: white;
+            border: 1px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .google-signin-btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--secondary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+
+    <!-- Login View - Magic Link Authentication -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-logo">💬</div>
+        <h1 class="auth-title">Welcome!</h1>
+        <p class="auth-subtitle">Sign in with your email</p>
+        <div id="login-error" style="color: #e74c3c; margin-bottom: 15px; display: none; width: 100%; max-width: 400px; text-align: center;"></div>
+        <div id="login-success" style="color: #27ae60; margin-bottom: 15px; display: none; width: 100%; max-width: 400px; text-align: center;"></div>
+
+        <!-- Step 1: Email Input -->
+        <div id="magic-link-email-step" style="width: 100%; max-width: 400px;">
+            <input type="email" id="magic-email" placeholder="Enter your email" required style="width: 100%; padding: 12px; border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 15px; font-size: 16px;">
+            <button type="button" id="send-magic-code-btn" style="width: 100%; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                Send Verification Code
+            </button>
+        </div>
+
+        <!-- Step 2: Code Input -->
+        <div id="magic-link-code-step" style="width: 100%; max-width: 400px; display: none;">
+            <p style="text-align: center; margin-bottom: 10px; color: #333;">Enter the 6-digit code sent to</p>
+            <p style="text-align: center; margin-bottom: 15px; font-weight: bold;" id="magic-email-display"></p>
+            <input type="text"
+                   id="magic-code"
+                   placeholder="000000"
+                   maxlength="6"
+                   pattern="[0-9]{6}"
+                   inputmode="numeric"
+                   autocomplete="one-time-code"
+                   style="width: 100%; padding: 12px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 15px; font-family: 'Courier New', monospace;">
+            <button type="button" id="verify-magic-code-btn" style="width: 100%; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-bottom: 10px;">
+                Verify Code
+            </button>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="resend-code-btn" style="flex: 1; padding: 10px; background: #ecf0f1; color: #7f8c8d; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                    Resend Code
+                </button>
+                <button type="button" id="change-email-btn" style="flex: 1; padding: 10px; background: #ecf0f1; color: #7f8c8d; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                    Change Email
+                </button>
+            </div>
+        </div>
+
+        <div style="width: 100%; max-width: 400px; text-align: center; color: #7f8c8d; margin: 20px 0;">OR</div>
+        <button class="google-signin-btn" id="googleSignIn" style="width: 100%; max-width: 400px; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+        </button>
+    </div>
+
+    <!-- MFA Verification View -->
+    <div class="auth-container" id="mfaContainer">
+        <div class="auth-logo">🔐</div>
+        <h1 class="auth-title">Two-Factor Authentication</h1>
+        <p class="auth-subtitle">Enter your 6-digit verification code</p>
+        <div id="mfa-error" style="color: #e74c3c; margin-bottom: 15px; display: none;"></div>
+        <form id="mfa-form" style="width: 100%; max-width: 400px;">
+            <input type="text"
+                   id="mfa-code"
+                   placeholder="000000"
+                   maxlength="6"
+                   pattern="[0-9]{6}"
+                   inputmode="numeric"
+                   autocomplete="one-time-code"
+                   style="width: 100%; padding: 12px; font-size: 24px; text-align: center; border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 15px;"
+                   required>
+            <button type="submit" style="width: 100%; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-bottom: 10px;">Verify</button>
+        </form>
+        <button type="button" id="sendEmailCodeBtn" style="width: 100%; max-width: 400px; padding: 10px 20px; background: white; border: 1px solid #e1e8ed; border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 10px;">
+            📧 Send code via email
+        </button>
+        <button type="button" id="useBackupCodeBtn" style="width: 100%; max-width: 400px; padding: 10px 20px; background: white; border: 1px solid #e1e8ed; border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 10px;">
+            🔑 Use backup code instead
+        </button>
+        <a href="#" id="backToLoginFromMFA" style="color: #7f8c8d; text-decoration: none; margin-top: 15px;">Back to login</a>
+    </div>
+
+    <!-- Email MFA View -->
+    <div class="auth-container" id="emailMfaContainer">
+        <div class="auth-logo">📧</div>
+        <h1 class="auth-title">Email Verification</h1>
+        <p class="auth-subtitle">We've sent a 6-digit code to your email</p>
+        <div id="email-mfa-error" style="color: #e74c3c; margin-bottom: 15px; display: none;"></div>
+        <form id="email-mfa-form" style="width: 100%; max-width: 400px;">
+            <input type="text"
+                   id="email-mfa-code"
+                   placeholder="000000"
+                   maxlength="6"
+                   pattern="[0-9]{6}"
+                   inputmode="numeric"
+                   autocomplete="one-time-code"
+                   style="width: 100%; padding: 12px; font-size: 24px; text-align: center; border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 15px;"
+                   required>
+            <button type="submit" style="width: 100%; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-bottom: 10px;">Verify</button>
+        </form>
+        <button type="button" id="resendEmailCodeBtn" style="background: none; border: none; color: #3498db; text-decoration: underline; cursor: pointer; margin-bottom: 10px;">Resend code</button>
+        <a href="#" id="backToAuthFromEmail" style="color: #7f8c8d; text-decoration: none; margin-top: 15px;">Back to authenticator</a>
+    </div>
+
+    <!-- Backup Code View -->
+    <div class="auth-container" id="backupMfaContainer">
+        <div class="auth-logo">🔑</div>
+        <h1 class="auth-title">Use Backup Code</h1>
+        <p class="auth-subtitle">Enter one of your backup codes</p>
+        <div id="backup-mfa-error" style="color: #e74c3c; margin-bottom: 15px; display: none;"></div>
+        <form id="backup-mfa-form" style="width: 100%; max-width: 400px;">
+            <input type="text"
+                   id="backup-code"
+                   placeholder="Enter backup code"
+                   style="width: 100%; padding: 12px; font-size: 16px; text-align: center; border: 1px solid #e1e8ed; border-radius: 8px; margin-bottom: 15px;"
+                   required>
+            <button type="submit" style="width: 100%; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">Verify</button>
+        </form>
+        <a href="#" id="backToAuthFromBackup" style="color: #7f8c8d; text-decoration: none; margin-top: 15px;">Back to authenticator</a>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <!-- Header -->
+        <div class="app-header">
+            <button class="header-btn" id="menuBtn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <div class="app-title">Bedrock Chat</div>
+            <button class="header-btn" id="newChatBtn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be added here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <textarea
+                class="message-input"
+                id="messageInput"
+                placeholder="Type your message..."
+                rows="1"
+            ></textarea>
+            <button class="send-btn" id="sendBtn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Side Menu -->
+        <div class="side-menu" id="sideMenu">
+            <div class="menu-header">
+                <div class="menu-title">Conversations</div>
+                <button class="close-menu" id="closeMenu">×</button>
+            </div>
+            <div class="conversation-list" id="conversationList">
+                <!-- Conversation items will be added here -->
+            </div>
+            <div class="menu-footer" style="padding: 15px; border-top: 1px solid #e1e8ed;">
+                <button id="logoutBtn" style="width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                    Sign Out
+                </button>
+            </div>
+        </div>
+        <div class="menu-overlay" id="menuOverlay"></div>
+    </div>
+
+    <!-- Mobile Chat Client -->
+    <script>
+        // Mock Capacitor for web mode
+        if (!window.Capacitor) {
+            window.Capacitor = {
+                isNativePlatform: () => false,
+                getPlatform: () => 'web'
+            };
+        }
+
+        // Mock Storage for web mode
+        const Storage = window.Capacitor?.isNativePlatform() ? window.CapacitorStorage : {
+            get: async ({ key }) => {
+                const value = localStorage.getItem(key);
+                return { value };
+            },
+            set: async ({ key, value }) => {
+                localStorage.setItem(key, value);
+                return {};
+            },
+            remove: async ({ key }) => {
+                localStorage.removeItem(key);
+                return {};
+            }
+        };
+
+        // Mobile Chat Client
+        class MobileChatClient {
+            constructor() {
+                this.apiUrl = this.getApiUrl();
+                this.authToken = null;
+                this.currentConversationId = null;
+                this.conversations = [];
+                this.isAuthenticated = false;
+                this.messageHistory = [];
+
+                this.init();
+            }
+
+            getBaseURL() {
+                // FairytaleGenie pattern: staging branch -> staging URL, main branch -> production URL
+                const hostname = window.location.hostname;
+                const protocol = window.location.protocol;
+                const port = window.location.port;
+
+                console.log(`[URL Detection] Hostname: ${hostname}, Port: ${port}`);
+
+                // Priority 1: Local development (localhost)
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    console.log('[URL Detection] Local development - using localhost:8000');
+                    return 'http://localhost:8000';
+                }
+
+                // Priority 2: MOBILE_CONFIG from native app build (injected at build time)
+                if (window.MOBILE_CONFIG && window.MOBILE_CONFIG.apiUrl) {
+                    console.log('[URL Detection] Using MOBILE_CONFIG:', window.MOBILE_CONFIG.apiUrl);
+                    return window.MOBILE_CONFIG.apiUrl;
+                }
+
+                // Priority 3: Environment detection based on hostname patterns
+                // Staging: *-staging.*, staging.*, staging-*
+                const isStaging = hostname.includes('-staging') ||
+                                  hostname.includes('staging-') ||
+                                  hostname.includes('.staging.') ||
+                                  hostname.startsWith('staging.');
+
+                if (isStaging) {
+                    // Staging environment - use current hostname (staging URL)
+                    const baseURL = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+                    console.log(`[URL Detection] Staging environment: ${baseURL}`);
+                    return baseURL;
+                }
+
+                // Production environment - use current hostname
+                const baseURL = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+                console.log(`[URL Detection] Production environment: ${baseURL}`);
+                return baseURL;
+            }
+
+            getApiUrl() {
+                // API URL is the same as base URL - all endpoints are relative
+                return this.getBaseURL();
+            }
+
+            getWebAppUrl() {
+                // Get web application URL for external links (account settings, etc.)
+                const hostname = window.location.hostname;
+
+                // Local development
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    return 'http://localhost:8000';
+                }
+
+                // Use MOBILE_CONFIG if available (native app)
+                if (window.MOBILE_CONFIG && window.MOBILE_CONFIG.webAppUrl) {
+                    return window.MOBILE_CONFIG.webAppUrl;
+                }
+
+                // Otherwise use current origin
+                return window.location.origin;
+            }
+
+            async init() {
+                console.log('Initializing Mobile Chat Client...');
+                console.log('Platform:', Capacitor.getPlatform());
+                console.log('API URL:', this.apiUrl);
+
+                // Check authentication
+                await this.checkAuth();
+
+                // Set up event listeners
+                this.setupEventListeners();
+
+                // Hide loading screen
+                document.getElementById('loadingScreen').style.display = 'none';
+
+                if (this.isAuthenticated) {
+                    this.showApp();
+                    await this.loadConversations();
+                } else {
+                    this.showAuth();
+                }
+            }
+
+            setupEventListeners() {
+                // Menu
+                document.getElementById('menuBtn').addEventListener('click', () => {
+                    document.getElementById('sideMenu').classList.add('open');
+                    document.getElementById('menuOverlay').classList.add('show');
+                });
+
+                document.getElementById('closeMenu').addEventListener('click', () => {
+                    this.closeMenu();
+                });
+
+                document.getElementById('menuOverlay').addEventListener('click', () => {
+                    this.closeMenu();
+                });
+
+                // New chat
+                document.getElementById('newChatBtn').addEventListener('click', () => {
+                    this.startNewChat();
+                });
+
+                // Send message
+                document.getElementById('sendBtn').addEventListener('click', () => {
+                    this.sendMessage();
+                });
+
+                document.getElementById('messageInput').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Auto-resize textarea
+                document.getElementById('messageInput').addEventListener('input', (e) => {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                });
+
+                // Google Sign In
+                document.getElementById('googleSignIn').addEventListener('click', () => {
+                    this.signInWithGoogle();
+                });
+
+                // Magic Link Authentication
+                this.currentMagicLinkEmail = '';
+
+                // Send magic link code
+                document.getElementById('send-magic-code-btn')?.addEventListener('click', async () => {
+                    await this.sendMagicLinkCode();
+                });
+
+                // Allow Enter key on email input
+                document.getElementById('magic-email')?.addEventListener('keypress', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        await this.sendMagicLinkCode();
+                    }
+                });
+
+                // Verify magic link code
+                document.getElementById('verify-magic-code-btn')?.addEventListener('click', async () => {
+                    await this.verifyMagicLinkCode();
+                });
+
+                // Allow Enter key on code input
+                document.getElementById('magic-code')?.addEventListener('keypress', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        await this.verifyMagicLinkCode();
+                    }
+                });
+
+                // Only allow numeric input for code
+                document.getElementById('magic-code')?.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                });
+
+                // Resend code
+                document.getElementById('resend-code-btn')?.addEventListener('click', async () => {
+                    await this.sendMagicLinkCode();
+                });
+
+                // Change email (go back to email step)
+                document.getElementById('change-email-btn')?.addEventListener('click', () => {
+                    document.getElementById('magic-link-code-step').style.display = 'none';
+                    document.getElementById('magic-link-email-step').style.display = 'block';
+                    document.getElementById('magic-code').value = '';
+                    this.hideLoginMessages();
+                    document.getElementById('magic-email').focus();
+                });
+
+                // Logout button (if it exists)
+                const logoutBtn = document.getElementById('logoutBtn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', () => {
+                        this.signOut();
+                    });
+                }
+
+                // Handle back button (only in native app)
+                if (window.Capacitor?.isNativePlatform() && window.CapApp) {
+                    window.CapApp.addListener('backButton', () => {
+                        if (document.getElementById('sideMenu').classList.contains('open')) {
+                            this.closeMenu();
+                        } else {
+                            window.CapApp.exitApp();
+                        }
+                    });
+                }
+
+                // MFA form submission
+                document.getElementById('mfa-form')?.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.handleMfaSubmit('totp');
+                });
+
+                // Email MFA form submission
+                document.getElementById('email-mfa-form')?.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.handleMfaSubmit('email');
+                });
+
+                // Backup code form submission
+                document.getElementById('backup-mfa-form')?.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.handleMfaSubmit('backup');
+                });
+
+                // Send email code button
+                document.getElementById('sendEmailCodeBtn')?.addEventListener('click', async () => {
+                    await this.sendEmailMfaCode();
+                });
+
+                // Resend email code button
+                document.getElementById('resendEmailCodeBtn')?.addEventListener('click', async () => {
+                    await this.sendEmailMfaCode();
+                });
+
+                // Use backup code button
+                document.getElementById('useBackupCodeBtn')?.addEventListener('click', () => {
+                    this.showMfaView('backup');
+                });
+
+                // Back to login links
+                document.getElementById('backToLoginFromMFA')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showAuth();
+                    this.hideMfaViews();
+                });
+
+                document.getElementById('backToAuthFromEmail')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showMfaView('totp');
+                });
+
+                document.getElementById('backToAuthFromBackup')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showMfaView('totp');
+                });
+            }
+
+            closeMenu() {
+                document.getElementById('sideMenu').classList.remove('open');
+                document.getElementById('menuOverlay').classList.remove('show');
+            }
+
+            async signOut() {
+                try {
+                    // Confirm logout
+                    if (!confirm('Are you sure you want to sign out?')) {
+                        return;
+                    }
+
+                    // Call logout endpoint
+                    const response = await fetch(`${this.apiUrl}/auth/logout`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    // Clear local storage
+                    if (window.Storage) {
+                        await Storage.remove({ key: 'auth_token' });
+                        await Storage.remove({ key: 'conversations' });
+                        await Storage.remove({ key: 'current_conversation' });
+                    }
+
+                    // Reset app state
+                    this.isAuthenticated = false;
+                    this.authToken = null;
+                    this.conversations = [];
+                    this.currentConversationId = null;
+                    this.messageHistory = [];
+
+                    // Hide app and show auth
+                    this.closeMenu();
+                    document.getElementById('appContainer').style.display = 'none';
+                    document.getElementById('authContainer').classList.add('show');
+                    document.getElementById('loadingScreen').style.display = 'none';
+
+                    // Clear message container
+                    document.getElementById('messagesContainer').innerHTML = '';
+
+                    console.log('Signed out successfully');
+                } catch (error) {
+                    console.error('Error signing out:', error);
+                    alert('Error signing out. Please try again.');
+                }
+            }
+
+            showApp() {
+                document.getElementById('authContainer').classList.remove('show');
+                document.getElementById('appContainer').style.display = 'flex';
+            }
+
+            showAuth() {
+                document.getElementById('authContainer').classList.add('show');
+                document.getElementById('appContainer').style.display = 'none';
+
+                // Reset magic link form to email step
+                document.getElementById('magic-link-email-step').style.display = 'block';
+                document.getElementById('magic-link-code-step').style.display = 'none';
+                document.getElementById('magic-email').value = '';
+                document.getElementById('magic-code').value = '';
+                this.hideLoginMessages();
+                this.currentMagicLinkEmail = '';
+            }
+
+            async checkAuth() {
+                try {
+                    // First check for token-based auth (legacy)
+                    const { value } = await Storage.get({ key: 'auth_token' });
+                    if (value) {
+                        this.authToken = value;
+                        this.isAuthenticated = true;
+                        return true;
+                    }
+
+                    // Also check session-based auth by making a request to the server
+                    // This handles magic link and OAuth logins that use session cookies
+                    try {
+                        const response = await fetch(`${this.apiUrl}/health`, {
+                            method: 'GET',
+                            credentials: 'include'
+                        });
+
+                        if (response.ok) {
+                            // Try to load conversations to verify we're authenticated
+                            const convResponse = await fetch(`${this.apiUrl}/conversation_history`, {
+                                method: 'GET',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+
+                            if (convResponse.ok) {
+                                console.log('[Auth] Session-based authentication valid');
+                                this.isAuthenticated = true;
+                                return true;
+                            }
+                        }
+                    } catch (sessionError) {
+                        console.log('[Auth] Session check failed:', sessionError.message);
+                    }
+                } catch (error) {
+                    console.error('Error checking auth:', error);
+                }
+                return false;
+            }
+
+            async signInWithGoogle() {
+                try {
+                    console.log('Starting authentication flow...');
+
+                    // Show loading
+                    document.getElementById('loadingScreen').style.display = 'flex';
+
+                    // Create iframe for authentication
+                    const iframe = document.createElement('iframe');
+                    iframe.src = `${this.apiUrl}/mobile-auth.html`;
+                    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:10000;background:white;';
+                    document.body.appendChild(iframe);
+
+                    // Listen for authentication success
+                    const messageHandler = async (event) => {
+                        if (event.data && event.data.type === 'auth-success') {
+                            // Remove iframe
+                            document.body.removeChild(iframe);
+                            window.removeEventListener('message', messageHandler);
+
+                            // Hide loading
+                            document.getElementById('loadingScreen').style.display = 'none';
+
+                            // Check if MFA is required
+                            if (event.data.mfaRequired) {
+                                console.log('MFA required for user');
+                                this.mfaSessionId = event.data.sessionId;
+                                this.showMfaView('totp');
+                                return;
+                            }
+
+                            // Check authentication and proceed
+                            const isAuthenticated = await this.checkAuth();
+                            if (isAuthenticated) {
+                                this.showApp();
+                                await this.loadConversations();
+                            } else {
+                                alert('Authentication failed. Please try again.');
+                            }
+                        }
+                    };
+
+                    window.addEventListener('message', messageHandler);
+                } catch (error) {
+                    console.error('Sign in error:', error);
+                    alert('Sign in failed. Please try again.');
+                }
+            }
+
+            async loadConversations() {
+                try {
+                    // Load from storage first if available
+                    if (window.Capacitor?.Plugins?.Storage) {
+                        try {
+                            const { value } = await Storage.get({ key: 'conversations' });
+                            if (value) {
+                                this.conversations = JSON.parse(value);
+                                this.renderConversations();
+                            }
+                        } catch (storageError) {
+                            console.log('Could not load from storage:', storageError);
+                        }
+                    }
+
+                    // Then fetch from server using session authentication
+                    const response = await fetch(`${this.apiUrl}/conversation_history`, {
+                        method: 'GET',
+                        credentials: 'include',  // Include cookies for session auth
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        // The backend returns grouped history: { success: true, history: { 'Today': [], 'Previous 7 Days': [], 'Previous 30 Days': [] } }
+                        if (data.success && data.history) {
+                            // Flatten the grouped history into a single array
+                            const rawConversations = [
+                                ...(data.history['Today'] || []),
+                                ...(data.history['Previous 7 Days'] || []),
+                                ...(data.history['Previous 30 Days'] || [])
+                            ];
+
+                            // Map the backend format to what the UI expects
+                            // Backend: { id, preview, timestamp }
+                            // UI expects: { id, title }
+                            this.conversations = rawConversations.map(conv => ({
+                                id: conv.id,
+                                title: conv.preview || 'Untitled Chat',
+                                timestamp: conv.timestamp
+                            }));
+                        } else {
+                            // Fallback: handle other response formats
+                            this.conversations = Array.isArray(data) ? data : (data.conversations || []);
+                        }
+
+                        // Store locally if Capacitor is available
+                        if (window.Capacitor?.Plugins?.Storage) {
+                            await Storage.set({
+                                key: 'conversations',
+                                value: JSON.stringify(this.conversations)
+                            });
+                        }
+                        this.renderConversations();
+                    } else if (response.status === 401) {
+                        console.log('Not authenticated, conversations not loaded');
+                        this.conversations = [];
+                        this.renderConversations();
+                    }
+                } catch (error) {
+                    console.error('Error loading conversations:', error);
+                }
+            }
+
+            renderConversations() {
+                const list = document.getElementById('conversationList');
+                list.innerHTML = '';
+
+                if (this.conversations.length === 0) {
+                    list.innerHTML = '<div style="padding: 20px; text-align: center; color: #7f8c8d;">No conversations yet</div>';
+                    return;
+                }
+
+                this.conversations.forEach(conv => {
+                    const item = document.createElement('div');
+                    item.className = 'conversation-item';
+                    item.textContent = conv.title || 'Untitled Chat';
+                    if (conv.id === this.currentConversationId) {
+                        item.classList.add('active');
+                    }
+                    item.addEventListener('click', () => {
+                        this.loadConversation(conv.id);
+                        this.closeMenu();
+                    });
+                    list.appendChild(item);
+                });
+            }
+
+            async loadConversation(conversationId) {
+                try {
+                    const response = await fetch(`${this.apiUrl}/get_conversation/${conversationId}`, {
+                        method: 'GET',
+                        credentials: 'include',  // Include cookies for session auth
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.currentConversationId = conversationId;
+                        // Backend returns: { success, conversation_id, chat_history }
+                        // Handle multiple possible response structures
+                        this.messageHistory = data.chat_history || data.messages || data.history || [];
+                        this.renderMessages();
+                    } else if (response.status === 401) {
+                        console.log('Not authenticated to load conversation');
+                        alert('Please login to view this conversation');
+                    }
+                } catch (error) {
+                    console.error('Error loading conversation:', error);
+                    alert('Failed to load conversation');
+                }
+            }
+
+            startNewChat() {
+                this.currentConversationId = null;
+                this.messageHistory = [];
+                this.renderMessages();
+                this.closeMenu();
+            }
+
+            renderMessages() {
+                const container = document.getElementById('chatMessages');
+                container.innerHTML = '';
+
+                if (this.messageHistory.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">💬</div>
+                            <div style="font-size: 18px;">Start a conversation</div>
+                            <div style="margin-top: 10px;">Ask me anything!</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.messageHistory.forEach(msg => {
+                    this.addMessageToUI(msg.content, msg.role === 'user' ? 'user' : 'assistant');
+                });
+
+                // Scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+
+            addMessageToUI(text, sender) {
+                const container = document.getElementById('chatMessages');
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = sender === 'user' ? 'U' : 'AI';
+
+                const content = document.createElement('div');
+                content.className = 'message-content';
+
+                const textDiv = document.createElement('div');
+                textDiv.className = 'message-text';
+                textDiv.textContent = text;
+
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                content.appendChild(textDiv);
+                content.appendChild(timeDiv);
+
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(content);
+
+                container.appendChild(messageDiv);
+
+                // Scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+
+            showTypingIndicator() {
+                const container = document.getElementById('chatMessages');
+
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'message assistant';
+                typingDiv.id = 'typingIndicator';
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = 'AI';
+
+                const indicator = document.createElement('div');
+                indicator.className = 'typing-indicator';
+                indicator.innerHTML = `
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                `;
+
+                typingDiv.appendChild(avatar);
+                typingDiv.appendChild(indicator);
+                container.appendChild(typingDiv);
+
+                container.scrollTop = container.scrollHeight;
+            }
+
+            hideTypingIndicator() {
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+
+                if (!message) return;
+
+                // Clear input
+                input.value = '';
+                input.style.height = 'auto';
+
+                // Add user message to UI
+                this.addMessageToUI(message, 'user');
+                this.messageHistory.push({ role: 'user', content: message });
+
+                // Disable send button
+                document.getElementById('sendBtn').disabled = true;
+
+                // Show typing indicator
+                this.showTypingIndicator();
+
+                try {
+                    // Send to server using session authentication
+                    const response = await fetch(`${this.apiUrl}/api/chat/stream`, {
+                        method: 'POST',
+                        credentials: 'include',  // Include cookies for session auth
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            conversationId: this.currentConversationId,
+                            stream: true
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to send message');
+                    }
+
+                    // Hide typing indicator
+                    this.hideTypingIndicator();
+
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let aiResponse = '';
+                    let aiMessageDiv = null;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    if (parsed.content) {
+                                        aiResponse += parsed.content;
+
+                                        if (!aiMessageDiv) {
+                                            // Create AI message div
+                                            const container = document.getElementById('chatMessages');
+                                            aiMessageDiv = document.createElement('div');
+                                            aiMessageDiv.className = 'message assistant';
+
+                                            const avatar = document.createElement('div');
+                                            avatar.className = 'message-avatar';
+                                            avatar.textContent = 'AI';
+
+                                            const content = document.createElement('div');
+                                            content.className = 'message-content';
+
+                                            const textDiv = document.createElement('div');
+                                            textDiv.className = 'message-text';
+                                            textDiv.textContent = aiResponse;
+
+                                            content.appendChild(textDiv);
+                                            aiMessageDiv.appendChild(avatar);
+                                            aiMessageDiv.appendChild(content);
+                                            container.appendChild(aiMessageDiv);
+                                        } else {
+                                            // Update existing message
+                                            aiMessageDiv.querySelector('.message-text').textContent = aiResponse;
+                                        }
+
+                                        // Scroll to bottom
+                                        document.getElementById('chatMessages').scrollTop =
+                                            document.getElementById('chatMessages').scrollHeight;
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing SSE data:', e);
+                                }
+                            }
+                        }
+                    }
+
+                    // Add to message history
+                    this.messageHistory.push({ role: 'assistant', content: aiResponse });
+
+                    // Save conversation
+                    await this.saveConversation();
+
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.hideTypingIndicator();
+                    alert('Failed to send message. Please try again.');
+                } finally {
+                    // Re-enable send button
+                    document.getElementById('sendBtn').disabled = false;
+                }
+            }
+
+            async saveConversation() {
+                // Save to local storage
+                await Storage.set({
+                    key: `conversation_${this.currentConversationId || 'current'}`,
+                    value: JSON.stringify({
+                        id: this.currentConversationId,
+                        messages: this.messageHistory,
+                        updatedAt: new Date().toISOString()
+                    })
+                });
+            }
+
+            // Magic Link Authentication Methods
+            async sendMagicLinkCode() {
+                const emailInput = document.getElementById('magic-email');
+                const email = emailInput.value.trim();
+                const errorDiv = document.getElementById('login-error');
+                const successDiv = document.getElementById('login-success');
+                const sendBtn = document.getElementById('send-magic-code-btn');
+
+                // Clear previous messages
+                this.hideLoginMessages();
+
+                if (!email || !email.includes('@')) {
+                    errorDiv.textContent = 'Please enter a valid email address';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // Disable button and show loading
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Sending...';
+
+                try {
+                    const response = await fetch(`${this.apiUrl}/mobile/auth/magic-link/request`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Mobile-Client': 'true'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ email })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Store email and show code step
+                        this.currentMagicLinkEmail = email;
+                        document.getElementById('magic-email-display').textContent = email;
+                        document.getElementById('magic-link-email-step').style.display = 'none';
+                        document.getElementById('magic-link-code-step').style.display = 'block';
+                        document.getElementById('magic-code').focus();
+
+                        // Show success message
+                        successDiv.textContent = result.message || 'Verification code sent!';
+                        successDiv.style.display = 'block';
+                    } else {
+                        errorDiv.textContent = result.error || 'Failed to send code';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('[Magic Link] Send error:', error);
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.style.display = 'block';
+                } finally {
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Send Verification Code';
+                }
+            }
+
+            async verifyMagicLinkCode() {
+                const codeInput = document.getElementById('magic-code');
+                const code = codeInput.value.trim();
+                const errorDiv = document.getElementById('login-error');
+                const verifyBtn = document.getElementById('verify-magic-code-btn');
+
+                // Clear previous messages
+                this.hideLoginMessages();
+
+                if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+                    errorDiv.textContent = 'Please enter a valid 6-digit code';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                if (!this.currentMagicLinkEmail) {
+                    errorDiv.textContent = 'Session expired. Please start over.';
+                    errorDiv.style.display = 'block';
+                    document.getElementById('magic-link-code-step').style.display = 'none';
+                    document.getElementById('magic-link-email-step').style.display = 'block';
+                    return;
+                }
+
+                // Disable button and show loading
+                verifyBtn.disabled = true;
+                verifyBtn.textContent = 'Verifying...';
+
+                try {
+                    const response = await fetch(`${this.apiUrl}/mobile/auth/magic-link/verify`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Mobile-Client': 'true'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            email: this.currentMagicLinkEmail,
+                            code: code
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success && result.authenticated) {
+                        console.log('[Magic Link] Login successful:', result.user);
+                        this.isAuthenticated = true;
+                        this.currentMagicLinkEmail = '';
+                        this.showApp();
+                        await this.loadConversations();
+                    } else {
+                        errorDiv.textContent = result.error || 'Invalid code';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('[Magic Link] Verify error:', error);
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.style.display = 'block';
+                } finally {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify Code';
+                }
+            }
+
+            hideLoginMessages() {
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('login-success').style.display = 'none';
+            }
+
+            // MFA Helper Methods
+            showMfaView(type) {
+                console.log('[MFA] showMfaView called with type:', type);
+
+                // Hide all views
+                this.hideMfaViews();
+
+                const authContainer = document.getElementById('authContainer');
+                const appContainer = document.getElementById('appContainer');
+
+                // Hide login and app containers
+                authContainer.classList.remove('show');
+                appContainer.style.display = 'none';
+
+                // Show appropriate MFA view by adding 'show' class
+                if (type === 'totp') {
+                    document.getElementById('mfaContainer').classList.add('show');
+                    console.log('[MFA] Showing TOTP MFA view');
+                } else if (type === 'email') {
+                    document.getElementById('emailMfaContainer').classList.add('show');
+                    console.log('[MFA] Showing email MFA view');
+                } else if (type === 'backup') {
+                    document.getElementById('backupMfaContainer').classList.add('show');
+                    console.log('[MFA] Showing backup MFA view');
+                }
+            }
+
+            hideMfaViews() {
+                // Remove 'show' class from all MFA views
+                document.getElementById('mfaContainer').classList.remove('show');
+                document.getElementById('emailMfaContainer').classList.remove('show');
+                document.getElementById('backupMfaContainer').classList.remove('show');
+            }
+
+            async handleMfaSubmit(method) {
+                try {
+                    let code;
+                    let errorElement;
+
+                    if (method === 'totp') {
+                        code = document.getElementById('mfa-code').value;
+                        errorElement = document.getElementById('mfa-error');
+                    } else if (method === 'email') {
+                        code = document.getElementById('email-mfa-code').value;
+                        errorElement = document.getElementById('email-mfa-error');
+                    } else if (method === 'backup') {
+                        code = document.getElementById('backup-code').value;
+                        errorElement = document.getElementById('backup-mfa-error');
+                    }
+
+                    if (!code) {
+                        errorElement.textContent = 'Please enter a code';
+                        errorElement.style.display = 'block';
+                        return;
+                    }
+
+                    // Get MFA session ID from storage
+                    if (!this.mfaSessionId) {
+                        errorElement.textContent = 'Session expired. Please login again.';
+                        errorElement.style.display = 'block';
+                        setTimeout(() => {
+                            this.showAuth();
+                            this.hideMfaViews();
+                        }, 2000);
+                        return;
+                    }
+
+                    // Call the mobile MFA verify endpoint
+                    const response = await fetch(`${this.apiUrl}/mobile/auth/mfa-verify`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sessionId: this.mfaSessionId,
+                            code: code,
+                            method: method === 'totp' ? 'totp' : method
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Clear MFA session
+                        delete this.mfaSessionId;
+
+                        // Hide MFA views and show app
+                        this.hideMfaViews();
+                        this.isAuthenticated = true;
+                        this.showApp();
+                        await this.loadConversations();
+                    } else {
+                        errorElement.textContent = data.error || 'Invalid code';
+                        errorElement.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('MFA verification error:', error);
+                    const errorElement = method === 'totp'
+                        ? document.getElementById('mfa-error')
+                        : method === 'email'
+                        ? document.getElementById('email-mfa-error')
+                        : document.getElementById('backup-mfa-error');
+                    errorElement.textContent = 'Verification failed. Please try again.';
+                    errorElement.style.display = 'block';
+                }
+            }
+
+            async sendEmailMfaCode() {
+                try {
+                    if (!this.mfaSessionId) {
+                        alert('Session expired. Please login again.');
+                        this.showAuth();
+                        this.hideMfaViews();
+                        return;
+                    }
+
+                    const response = await fetch(`${this.apiUrl}/mobile/auth/send-mfa-code`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sessionId: this.mfaSessionId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Show email MFA view
+                        this.showMfaView('email');
+                        alert(data.message || 'Verification code sent to your email');
+                    } else {
+                        alert(data.error || 'Failed to send code');
+                    }
+                } catch (error) {
+                    console.error('Error sending email code:', error);
+                    alert('Failed to send code. Please try again.');
+                }
+            }
+        }
+
+        // Initialize the app
+        window.addEventListener('DOMContentLoaded', () => {
+            new MobileChatClient();
+        });
+    </script>
+</body>
+</html>

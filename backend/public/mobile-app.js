@@ -1,0 +1,1687 @@
+// Mock Capacitor for web mode
+// Treat mobile-app.html as mobile even when served from web
+if (!window.Capacitor) {
+    const isMobileAppPage = window.location.pathname.includes('/mobile-app.html') ||
+                           window.location.pathname.includes('/mobile-');
+    window.Capacitor = {
+        isNativePlatform: () => false,
+        getPlatform: () => isMobileAppPage ? 'mobile-web' : 'web'
+    };
+}
+
+// Mock Storage for web mode
+const Storage = window.Capacitor?.isNativePlatform() ? window.CapacitorStorage : {
+    get: async ({ key }) => {
+        const value = localStorage.getItem(key);
+        return { value };
+    },
+    set: async ({ key, value }) => {
+        localStorage.setItem(key, value);
+        return {};
+    },
+    remove: async ({ key }) => {
+        localStorage.removeItem(key);
+        return {};
+    }
+};
+
+// Mobile Chat Client
+class MobileChatClient {
+    constructor() {
+        this.apiUrl = this.getApiUrl();
+        this.authToken = null;
+        this.currentConversationId = null;
+        this.conversations = [];
+        this.isAuthenticated = false;
+        this.messageHistory = [];
+        this.mfaSessionId = null; // Store MFA session ID for verification
+
+        // Configure marked.js for proper markdown rendering
+        if (window.marked) {
+            marked.setOptions({
+                breaks: true,        // Convert \n to <br>
+                gfm: true,          // GitHub Flavored Markdown
+                headerIds: false,   // Don't add IDs to headers
+                mangle: false       // Don't mangle email addresses
+            });
+        }
+
+        // Configure DOMPurify options
+        this.purifyOptions = {
+            ALLOWED_TAGS: [
+                'p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li',
+                'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+            ],
+            ALLOWED_ATTR: ['href', 'target', 'rel', 'class']
+        };
+
+        // Initialize Mobile API Client with API key authentication
+        this.apiClient = new MobileAPIClient({
+            baseURL: this.apiUrl,
+            apiKey: this.getMobileApiKey(),
+            version: '1.0.0',
+            debug: true // Set to false in production
+        });
+
+        this.init();
+        
+        // Check for OAuth callback parameters on page load
+        this.checkOAuthCallback();
+    }
+    
+    checkOAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Check for OAuth success (no MFA)
+        if (urlParams.get('success') === 'true' && urlParams.get('session')) {
+            const sessionToken = urlParams.get('session');
+            console.log('[OAuth] Success callback detected, exchanging session token');
+            this.handleOAuthSessionExchange(sessionToken);
+            return;
+        }
+        
+        // Check for OAuth with MFA required
+        if (urlParams.get('mfa_required') === 'true' && urlParams.get('sessionId')) {
+            const sessionId = urlParams.get('sessionId');
+            console.log('[OAuth] MFA required callback detected');
+            this.mfaSessionId = sessionId;
+            this.showMFAVerification();
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+    }
+    
+    async handleOAuthSessionExchange(sessionToken) {
+        try {
+            console.log('[OAuth] Exchanging session token...');
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            // Use direct fetch() instead of apiClient to avoid API key headers
+            const response = await fetch(`${this.apiUrl}/auth/mobile/oauth-exchange`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sessionToken
+                }),
+                credentials: 'include' // Include cookies for session management
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[OAuth] Exchange successful');
+
+                // User is now authenticated
+                this.isAuthenticated = true;
+                this.showApp();
+                await this.loadConversations();
+
+                // Clear URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                console.error('[OAuth] Exchange failed');
+                alert('OAuth session expired. Please try again.');
+                this.showView('authContainer');
+            }
+        } catch (error) {
+            console.error('[OAuth] Exchange error:', error);
+            alert('OAuth authentication failed. Please try again.');
+            this.showView('authContainer');
+        } finally {
+            document.getElementById('loadingScreen').style.display = 'none';
+        }
+    }
+
+    getMobileApiKey() {
+        // Check if API key is injected during build (for native apps)
+        if (window.MOBILE_CONFIG && window.MOBILE_CONFIG.apiKey) {
+            return window.MOBILE_CONFIG.apiKey;
+        }
+
+        // For development/emulator - this should match backend default
+        return 'dev_mobile_api_key_change_in_production';
+    }
+
+    getBaseURL() {
+        // Universal URL detection for any domain (template-friendly)
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port;
+
+        console.log(`Detecting API URL from hostname: ${hostname}:${port}`);
+
+        // Priority 1: Manual configuration override
+        if (window.appConfig && window.appConfig.baseURL) {
+            console.log('Using manual baseURL:', window.appConfig.baseURL);
+            return window.appConfig.baseURL;
+        }
+
+        // Priority 2: MOBILE_CONFIG from build script
+        if (window.MOBILE_CONFIG && window.MOBILE_CONFIG.apiUrl) {
+            console.log('Using MOBILE_CONFIG apiUrl:', window.MOBILE_CONFIG.apiUrl);
+            return window.MOBILE_CONFIG.apiUrl;
+        }
+
+        // Priority 3: Auto-detect from current URL (works for localhost, ALB, any domain)
+        let baseURL;
+        let detectedEnv;
+
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            detectedEnv = 'local';
+            // For local dev, assume backend is on same host/port or default port 8000
+            const apiPort = port || '8000';
+            baseURL = `${protocol}//${hostname}:${apiPort}`;
+        } else if (hostname.includes('-staging') || hostname.includes('staging-') || hostname.includes('.staging.')) {
+            // Staging environment (any domain with 'staging' pattern)
+            detectedEnv = 'staging';
+            baseURL = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+        } else {
+            // Production/ALB environment - use same domain as frontend
+            detectedEnv = 'production';
+            baseURL = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+        }
+
+        console.log(`Detected environment: ${detectedEnv}, Base URL: ${baseURL}`);
+        return baseURL;
+    }
+
+    getApiUrl() {
+        // Simply use the base URL - all API endpoints are relative to base
+        return this.getBaseURL();
+    }
+
+    getDeviceId() {
+        // Try to get a persistent device ID
+        if (window.Capacitor?.isNativePlatform()) {
+            // In a real app, you'd use a device ID plugin
+            // For now, generate and store one
+            let deviceId = localStorage.getItem('device_id');
+            if (!deviceId) {
+                deviceId = 'device_' + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('device_id', deviceId);
+            }
+            return deviceId;
+        }
+        return 'web_' + Math.random().toString(36).substring(2, 15);
+    }
+
+    async init() {
+        console.log('Initializing Mobile Chat Client...');
+        console.log('Platform:', Capacitor.getPlatform());
+        console.log('API URL:', this.apiUrl);
+
+        // Set up deep link listener for native apps
+        if (Capacitor.isNativePlatform()) {
+            this.setupDeepLinkListener();
+        }
+
+        // Check if returning from OAuth with session token
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionToken = urlParams.get('sessionToken');
+
+        // Set up event listeners FIRST (before any async operations)
+        this.setupEventListeners();
+
+        if (sessionToken) {
+            console.log('[Mobile OAuth] Session token received, exchanging...');
+            // Show loading
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            // Exchange session token for authenticated session
+            const success = await this.exchangeOAuthToken(sessionToken);
+
+            // Clean up URL
+            window.history.replaceState({}, document.title, '/mobile-app.html');
+
+            if (success) {
+                this.isAuthenticated = true;
+                document.getElementById('loadingScreen').style.display = 'none';
+                this.showApp();
+                await this.loadConversations();
+                return;
+            } else {
+                document.getElementById('loadingScreen').style.display = 'none';
+                alert('Authentication failed. Please try again.');
+                this.showAuth();
+                return;
+            }
+        }
+
+        // Check existing authentication
+        await this.checkAuth();
+
+        // Hide loading screen
+        document.getElementById('loadingScreen').style.display = 'none';
+
+        if (this.isAuthenticated) {
+            this.showApp();
+            await this.loadConversations();
+        } else {
+            this.showAuth();
+        }
+    }
+
+    setupDeepLinkListener() {
+        // Listen for deep link events (for native mobile apps)
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+            window.Capacitor.Plugins.App.addListener('appUrlOpen', async (data) => {
+                console.log('[Deep Link] Received:', data.url);
+
+                // Parse deep link URL (e.g., bedrockexpress://oauth2redirect?sessionToken=xyz)
+                try {
+                    const url = new URL(data.url);
+                    const sessionToken = url.searchParams.get('sessionToken');
+
+                    if (sessionToken) {
+                        console.log('[Deep Link] OAuth session token received');
+                        document.getElementById('loadingScreen').style.display = 'flex';
+
+                        const success = await this.exchangeOAuthToken(sessionToken);
+
+                        document.getElementById('loadingScreen').style.display = 'none';
+
+                        if (success) {
+                            this.isAuthenticated = true;
+                            this.showApp();
+                            await this.loadConversations();
+                        } else {
+                            alert('Authentication failed. Please try again.');
+                        }
+                    }
+                } catch (error) {
+                    console.error('[Deep Link] Error parsing deep link:', error);
+                }
+            });
+        }
+    }
+
+    async exchangeOAuthToken(sessionToken) {
+        try {
+            console.log('[Mobile OAuth] Exchanging session token...');
+
+            // Use direct fetch() instead of apiClient to avoid API key headers
+            const response = await fetch(`${this.apiUrl}/auth/mobile/oauth-exchange`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sessionToken
+                }),
+                credentials: 'include' // Include cookies for session management
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[Mobile OAuth] Exchange successful for user:', data.user.email);
+                return true;
+            } else {
+                const error = await response.json();
+                console.error('[Mobile OAuth] Exchange failed:', error);
+                return false;
+            }
+        } catch (error) {
+            console.error('[Mobile OAuth] Exchange error:', error);
+            return false;
+        }
+    }
+
+    setupEventListeners() {
+        // Menu
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            document.getElementById('sideMenu').classList.add('open');
+            document.getElementById('menuOverlay').classList.add('show');
+        });
+
+        document.getElementById('closeMenu').addEventListener('click', () => {
+            this.closeMenu();
+        });
+
+        document.getElementById('menuOverlay').addEventListener('click', () => {
+            this.closeMenu();
+        });
+
+        // New chat
+        document.getElementById('newChatBtn').addEventListener('click', () => {
+            this.startNewChat();
+        });
+
+        // Send message
+        document.getElementById('sendBtn').addEventListener('click', () => {
+            this.sendMessage();
+        });
+
+        document.getElementById('messageInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+
+        // Auto-resize textarea
+        document.getElementById('messageInput').addEventListener('input', (e) => {
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+        });
+
+        // Magic Link Authentication
+        this.currentMagicLinkEmail = '';
+
+        // Send magic link code
+        const sendMagicCodeBtn = document.getElementById('sendMagicCodeBtn');
+        if (sendMagicCodeBtn) {
+            sendMagicCodeBtn.addEventListener('click', () => {
+                this.sendMagicLinkCode();
+            });
+        }
+
+        // Allow Enter key on email input
+        const magicEmailInput = document.getElementById('magicEmailInput');
+        if (magicEmailInput) {
+            magicEmailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendMagicLinkCode();
+                }
+            });
+        }
+
+        // Verify magic link code
+        const verifyMagicCodeBtn = document.getElementById('verifyMagicCodeBtn');
+        if (verifyMagicCodeBtn) {
+            verifyMagicCodeBtn.addEventListener('click', () => {
+                this.verifyMagicLinkCode();
+            });
+        }
+
+        // Allow Enter key on code input
+        const magicCodeInput = document.getElementById('magicCodeInput');
+        if (magicCodeInput) {
+            magicCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.verifyMagicLinkCode();
+                }
+            });
+            // Only allow numeric input
+            magicCodeInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
+        }
+
+        // Resend code
+        const resendCodeBtn = document.getElementById('resendCodeBtn');
+        if (resendCodeBtn) {
+            resendCodeBtn.addEventListener('click', () => {
+                this.sendMagicLinkCode();
+            });
+        }
+
+        // Change email (go back to email step)
+        const changeEmailBtn = document.getElementById('changeEmailBtn');
+        if (changeEmailBtn) {
+            changeEmailBtn.addEventListener('click', () => {
+                this.showMagicLinkEmailStep();
+            });
+        }
+
+        // Logout buttons (if they exist)
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                this.signOut();
+            });
+        }
+
+        const accountLogoutBtn = document.getElementById('accountLogoutBtn');
+        if (accountLogoutBtn) {
+            accountLogoutBtn.addEventListener('click', () => {
+                this.signOut();
+            });
+        }
+
+        // MFA enable button
+        const enableMfaBtn = document.getElementById('enableMfaBtn');
+        if (enableMfaBtn) {
+            enableMfaBtn.addEventListener('click', () => {
+                // Redirect to MFA setup page with mobile flag to return to mobile-app.html
+                window.location.href = '/auth/setup-authenticator?returnToMobile=true';
+            });
+        }
+
+        // MFA disable button
+        const disableMfaBtn = document.getElementById('disableMfaBtn');
+        if (disableMfaBtn) {
+            disableMfaBtn.addEventListener('click', async () => {
+                if (!confirm('Are you sure you want to disable two-factor authentication?')) {
+                    return;
+                }
+
+                try {
+                    // Get CSRF token
+                    const csrfResponse = await fetch('/auth/csrf-token');
+                    const csrfData = await csrfResponse.json();
+                    const csrfToken = csrfData.csrfToken;
+
+                    const response = await fetch('/auth/remove-authenticator', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `_csrf=${encodeURIComponent(csrfToken)}`,
+                        credentials: 'include'
+                    });
+
+                    if (response.ok || (response.status >= 300 && response.status < 400)) {
+                        alert('Two-factor authentication has been disabled successfully.');
+                        // Reload account info to update UI
+                        await this.loadAccountInfo();
+                    } else {
+                        alert('Failed to disable two-factor authentication. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error disabling MFA:', error);
+                    alert('Failed to disable two-factor authentication. Please try again.');
+                }
+            });
+        }
+
+        // Stop button
+        const stopBtn = document.getElementById('stopBtn');
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => {
+                this.stopGeneration();
+            });
+        }
+
+        // Clear button
+        const clearBtn = document.getElementById('clearBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                this.clearConversation();
+            });
+        }
+
+        // Bottom navigation
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const viewId = item.getAttribute('data-view');
+                this.switchView(viewId);
+            });
+        });
+
+        // MFA form submit
+        const mfaForm = document.getElementById('mfaForm');
+        if (mfaForm) {
+            mfaForm.addEventListener('submit', (e) => {
+                this.handleMFASubmit(e);
+            });
+        }
+
+        // MFA cancel button
+        const mfaCancelBtn = document.getElementById('mfaCancelBtn');
+        if (mfaCancelBtn) {
+            mfaCancelBtn.addEventListener('click', () => {
+                this.hideMFAVerification();
+                this.showAuth();
+            });
+        }
+
+        // Handle back button (only in native app)
+        if (window.Capacitor?.isNativePlatform() && window.CapApp) {
+            window.CapApp.addListener('backButton', () => {
+                if (document.getElementById('sideMenu').classList.contains('open')) {
+                    this.closeMenu();
+                } else {
+                    window.CapApp.exitApp();
+                }
+            });
+        }
+    }
+
+    closeMenu() {
+        document.getElementById('sideMenu').classList.remove('open');
+        document.getElementById('menuOverlay').classList.remove('show');
+    }
+
+    async signOut() {
+        try {
+            // Confirm logout
+            if (!confirm('Are you sure you want to sign out?')) {
+                return;
+            }
+
+            // Call mobile logout endpoint (returns JSON, not redirect)
+            const response = await this.apiClient.post('/auth/mobile/logout', {});
+
+            // Clear local storage
+            if (window.Storage) {
+                await Storage.remove({ key: 'auth_token' });
+                await Storage.remove({ key: 'conversations' });
+                await Storage.remove({ key: 'current_conversation' });
+            }
+
+            // Reset app state
+            this.isAuthenticated = false;
+            this.authToken = null;
+            this.conversations = [];
+            this.currentConversationId = null;
+            this.messageHistory = [];
+
+            // Hide app and show auth
+            this.closeMenu();
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('authContainer').classList.add('show');
+            document.getElementById('loadingScreen').style.display = 'none';
+
+            // Clear message container
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = '';
+            }
+
+            console.log('Signed out successfully');
+        } catch (error) {
+            console.error('Error signing out:', error);
+            alert('Error signing out. Please try again.');
+        }
+    }
+
+    showApp() {
+        document.getElementById('authContainer').classList.remove('show');
+        document.getElementById('appContainer').style.display = 'flex';
+    }
+
+    showAuth() {
+        this.showLogin();
+    }
+
+    showLogin() {
+        document.getElementById('authContainer').classList.add('show');
+        document.getElementById('appContainer').style.display = 'none';
+
+        // Reset magic link form to email step
+        this.showMagicLinkEmailStep();
+        document.getElementById('magicEmailInput').value = '';
+        this.currentMagicLinkEmail = '';
+    }
+
+    // View management (Fairytale Genie pattern)
+    showView(viewId) {
+        console.log('[View] Showing view:', viewId);
+        
+        // Hide loading screen
+        document.getElementById('loadingScreen').style.display = 'none';
+        
+        // Hide all auth containers (old system)
+        document.querySelectorAll('.auth-container').forEach(container => {
+            container.classList.add('hidden');
+            container.classList.remove('show');
+        });
+        
+        // Hide all views (new system)
+        document.querySelectorAll('.view').forEach(view => {
+            view.classList.remove('active');
+        });
+        
+        // Show the requested view/container
+        const viewElement = document.getElementById(viewId);
+        if (viewElement) {
+            if (viewElement.classList.contains('view')) {
+                viewElement.classList.add('active');
+            } else if (viewElement.classList.contains('auth-container')) {
+                viewElement.classList.remove('hidden');
+                viewElement.classList.add('show');
+            } else {
+                viewElement.style.display = 'flex';
+            }
+            console.log('[View] View shown:', viewId);
+        } else {
+            console.error('[View] View not found:', viewId);
+        }
+    }
+
+    showMFAVerification() {
+        console.log('[MFA] showMFAVerification called');
+        this.showView('mfaContainer');
+        
+        // Focus on MFA input
+        setTimeout(() => {
+            const mfaInput = document.getElementById('mfaCodeInput');
+            console.log('[MFA] MFA input found:', !!mfaInput);
+            mfaInput?.focus();
+        }, 100);
+    }
+
+    hideMFAVerification() {
+        this.showView('authContainer');
+    }
+
+    async handleMFASubmit(e) {
+        e.preventDefault();
+
+        const code = document.getElementById('mfaCodeInput').value;
+
+        if (!code || code.length !== 6) {
+            alert('Please enter a 6-digit code');
+            return;
+        }
+
+        if (!this.mfaSessionId) {
+            alert('MFA session expired. Please log in again.');
+            this.showLogin();
+            return;
+        }
+
+        try {
+            // Show loading
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            // Submit MFA code to mobile endpoint
+            const response = await fetch(`${this.apiUrl}/mobile/auth/mfa-verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': this.apiClient.apiKey,
+                    'X-Platform': this.apiClient.platform
+                },
+                body: JSON.stringify({
+                    sessionId: this.mfaSessionId,
+                    code: code,
+                    method: 'totp'
+                }),
+                credentials: 'include'
+            });
+
+            // Hide loading
+            document.getElementById('loadingScreen').style.display = 'none';
+
+            if (response.ok) {
+                const data = await response.json();
+
+                if (data.success && data.authenticated) {
+                    // MFA verified successfully
+                    this.isAuthenticated = true;
+                    this.mfaSessionId = null; // Clear session ID
+                    this.hideMFAVerification();
+                    this.showApp();
+                    await this.loadConversations();
+
+                    // Clear the MFA input
+                    document.getElementById('mfaCodeInput').value = '';
+                } else {
+                    alert('MFA verification failed. Please try again.');
+                    document.getElementById('mfaCodeInput').value = '';
+                    document.getElementById('mfaCodeInput')?.focus();
+                }
+            } else {
+                // MFA verification failed
+                const error = await response.json().catch(() => ({ error: 'Invalid code' }));
+
+                if (error.sessionExpired) {
+                    alert('Session expired. Please log in again.');
+                    this.mfaSessionId = null;
+                    this.showLogin();
+                } else {
+                    alert(error.error || 'Invalid verification code. Please try again.');
+                    // Clear the input for retry
+                    document.getElementById('mfaCodeInput').value = '';
+                    document.getElementById('mfaCodeInput')?.focus();
+                }
+            }
+        } catch (error) {
+            console.error('MFA verification error:', error);
+            document.getElementById('loadingScreen').style.display = 'none';
+            alert('MFA verification failed. Please try again.');
+        }
+    }
+
+    async checkAuth() {
+        try {
+            // For session-based auth, check with the server instead of local storage
+            const response = await this.apiClient.get('/auth/status');
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.authenticated) {
+                    this.isAuthenticated = true;
+                    console.log('[Auth] User is authenticated:', data.user?.email);
+                    return true;
+                } else {
+                    this.isAuthenticated = false;
+                    console.log('[Auth] User is not authenticated');
+                    return false;
+                }
+            } else {
+                this.isAuthenticated = false;
+                return false;
+            }
+        } catch (error) {
+            console.error('Error checking auth:', error);
+            this.isAuthenticated = false;
+            return false;
+        }
+    }
+
+    // Magic Link Authentication Methods
+    async sendMagicLinkCode() {
+        const emailInput = document.getElementById('magicEmailInput');
+        const email = emailInput.value.trim();
+        const errorDiv = document.getElementById('authError');
+        const successDiv = document.getElementById('authSuccess');
+        const sendBtn = document.getElementById('sendMagicCodeBtn');
+
+        // Clear previous messages
+        this.hideAuthMessages();
+
+        if (!email || !email.includes('@')) {
+            this.showAuthError('Please enter a valid email address');
+            return;
+        }
+
+        // Disable button and show loading
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending...';
+
+        try {
+            const response = await fetch(`${this.apiUrl}/mobile/auth/magic-link/request`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Mobile-Client': 'true'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Store email and show code step
+                this.currentMagicLinkEmail = email;
+                document.getElementById('magicEmailDisplay').textContent = email;
+                this.showMagicLinkCodeStep();
+                this.showAuthSuccess(result.message || 'Verification code sent!');
+            } else {
+                this.showAuthError(result.error || 'Failed to send code');
+            }
+        } catch (error) {
+            console.error('[Magic Link] Send error:', error);
+            this.showAuthError('Network error. Please try again.');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send Verification Code';
+        }
+    }
+
+    async verifyMagicLinkCode() {
+        const codeInput = document.getElementById('magicCodeInput');
+        const code = codeInput.value.trim();
+        const verifyBtn = document.getElementById('verifyMagicCodeBtn');
+
+        // Clear previous messages
+        this.hideAuthMessages();
+
+        if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+            this.showAuthError('Please enter a valid 6-digit code');
+            return;
+        }
+
+        if (!this.currentMagicLinkEmail) {
+            this.showAuthError('Session expired. Please start over.');
+            this.showMagicLinkEmailStep();
+            return;
+        }
+
+        // Disable button and show loading
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Verifying...';
+
+        try {
+            const response = await fetch(`${this.apiUrl}/mobile/auth/magic-link/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Mobile-Client': 'true'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    email: this.currentMagicLinkEmail,
+                    code: code
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.authenticated) {
+                console.log('[Magic Link] Login successful:', result.user);
+                this.isAuthenticated = true;
+                this.currentMagicLinkEmail = '';
+                this.showApp();
+                await this.loadConversations();
+            } else {
+                this.showAuthError(result.error || 'Invalid code');
+            }
+        } catch (error) {
+            console.error('[Magic Link] Verify error:', error);
+            this.showAuthError('Network error. Please try again.');
+        } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify Code';
+        }
+    }
+
+    showMagicLinkEmailStep() {
+        document.getElementById('magicLinkEmailStep').classList.remove('hidden');
+        document.getElementById('magicLinkCodeStep').classList.add('hidden');
+        document.getElementById('magicCodeInput').value = '';
+        this.hideAuthMessages();
+        document.getElementById('magicEmailInput').focus();
+    }
+
+    showMagicLinkCodeStep() {
+        document.getElementById('magicLinkEmailStep').classList.add('hidden');
+        document.getElementById('magicLinkCodeStep').classList.remove('hidden');
+        document.getElementById('magicCodeInput').focus();
+    }
+
+    showAuthError(message) {
+        const errorDiv = document.getElementById('authError');
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+    }
+
+    showAuthSuccess(message) {
+        const successDiv = document.getElementById('authSuccess');
+        if (successDiv) {
+            successDiv.textContent = message;
+            successDiv.classList.remove('hidden');
+        }
+    }
+
+    hideAuthMessages() {
+        const errorDiv = document.getElementById('authError');
+        const successDiv = document.getElementById('authSuccess');
+        if (errorDiv) errorDiv.classList.add('hidden');
+        if (successDiv) successDiv.classList.add('hidden');
+    }
+
+    async handleLoginSubmit(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('emailInput').value;
+        const password = document.getElementById('passwordInput').value;
+
+        try {
+            // Show loading
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            // Call mobile-specific login endpoint that returns JSON
+            const response = await fetch(`${this.apiUrl}/mobile/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': this.apiClient.apiKey,
+                    'X-Platform': this.apiClient.platform,
+                    'X-Client-Version': this.apiClient.version
+                },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    platform: this.apiClient.platform,
+                    deviceId: this.getDeviceId()
+                }),
+                credentials: 'include' // Important: Include cookies for session management
+            });
+
+            // Hide loading
+            document.getElementById('loadingScreen').style.display = 'none';
+
+            // Handle JSON response from mobile endpoint
+            if (response.ok) {
+                const data = await response.json();
+
+                // Check if MFA is required
+                if (data.mfaRequired) {
+                    console.log('[Login] MFA verification required');
+                    console.log('[Login] Session ID:', data.sessionId);
+                    // Store session ID for MFA verification
+                    this.mfaSessionId = data.sessionId;
+                    // Show MFA verification screen
+                    console.log('[Login] About to show MFA verification screen');
+                    try {
+                        this.showMFAVerification();
+                        console.log('[Login] MFA verification screen shown');
+                    } catch (error) {
+                        console.error('[Login] Error showing MFA screen:', error);
+                    }
+                    return;
+                }
+
+                // Check if authenticated
+                if (data.authenticated) {
+                    this.isAuthenticated = true;
+                    this.showApp();
+                    await this.loadConversations();
+                    return;
+                }
+
+                // Unexpected response
+                alert('Login response was unexpected. Please try again.');
+            } else {
+                // Error response
+                const error = await response.json().catch(() => ({ error: 'Login failed' }));
+                console.error('[Login] Error response:', error);
+
+                if (error.mfaSetupRequired) {
+                    alert('MFA setup is required. Please complete MFA setup in the web application first.');
+                } else if (error.emailVerified === false) {
+                    // Show email verification required message with option to resend
+                    if (confirm('Please verify your email first. Would you like us to resend the verification email?')) {
+                        this.showResendVerification(email);
+                    }
+                } else if (error.details) {
+                    // Validation errors
+                    alert(`Validation error: ${error.details}`);
+                } else {
+                    alert(error.error || error.message || 'Login failed. Please check your credentials.');
+                }
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            document.getElementById('loadingScreen').style.display = 'none';
+            alert('Login failed. Please try again.');
+        }
+    }
+
+    async handleForgotPasswordSubmit(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('forgotEmailInput').value;
+
+        try {
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            const response = await fetch(`${this.apiUrl}/auth/forgot-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email }),
+                credentials: 'include'
+            });
+
+            document.getElementById('loadingScreen').style.display = 'none';
+
+            if (response.ok) {
+                alert('Password reset link has been sent to your email.');
+                this.showLogin();
+                document.getElementById('forgotPasswordForm').reset();
+            } else {
+                const error = await response.json().catch(() => ({ error: 'Failed to send reset link' }));
+                alert(error.error || error.message || 'Failed to send reset link. Please try again.');
+            }
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            document.getElementById('loadingScreen').style.display = 'none';
+            alert('Failed to send reset link. Please try again.');
+        }
+    }
+
+    async handleResendVerificationSubmit(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('resendEmailInput').value;
+
+        try {
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            const response = await fetch(`${this.apiUrl}/auth/resend-verification`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email }),
+                credentials: 'include'
+            });
+
+            document.getElementById('loadingScreen').style.display = 'none';
+
+            if (response.ok) {
+                alert('Verification email has been sent. Please check your inbox.');
+                this.showLogin();
+                document.getElementById('resendVerificationForm').reset();
+            } else {
+                const error = await response.json().catch(() => ({ error: 'Failed to resend verification' }));
+                alert(error.error || error.message || 'Failed to resend verification email. Please try again.');
+            }
+        } catch (error) {
+            console.error('Resend verification error:', error);
+            document.getElementById('loadingScreen').style.display = 'none';
+            alert('Failed to resend verification email. Please try again.');
+        }
+    }
+
+    async loadConversations() {
+        try {
+            // Load from storage first if available
+            if (window.Capacitor?.Plugins?.Storage) {
+                try {
+                    const { value } = await Storage.get({ key: 'conversations' });
+                    if (value) {
+                        this.conversations = JSON.parse(value);
+                        this.renderConversations();
+                    }
+                } catch (storageError) {
+                    console.log('Could not load from storage:', storageError);
+                }
+            }
+
+            // Then fetch from server using mobile API client
+            const response = await this.apiClient.get('/conversation_history');
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Backend returns: { success: true, history: { 'Today': [], 'Previous 7 Days': [], 'Previous 30 Days': [] } }
+                // Flatten grouped history into a single array for the sidebar
+                if (data.success && data.history) {
+                    const allConversations = [
+                        ...(data.history['Today'] || []),
+                        ...(data.history['Previous 7 Days'] || []),
+                        ...(data.history['Previous 30 Days'] || [])
+                    ];
+
+                    // Map preview to title for sidebar display
+                    this.conversations = allConversations.map(conv => ({
+                        id: conv.id,
+                        title: conv.preview || 'Untitled Chat',
+                        timestamp: conv.timestamp
+                    }));
+                } else {
+                    // Fallback for other response formats
+                    this.conversations = Array.isArray(data) ? data : (data.conversations || []);
+                }
+
+                // Store locally if Capacitor is available
+                if (window.Capacitor?.Plugins?.Storage) {
+                    await Storage.set({
+                        key: 'conversations',
+                        value: JSON.stringify(this.conversations)
+                    });
+                }
+                this.renderConversations();
+            } else if (response.status === 401) {
+                console.log('Not authenticated, conversations not loaded');
+                this.conversations = [];
+                this.renderConversations();
+            }
+        } catch (error) {
+            console.error('Error loading conversations:', error);
+        }
+    }
+
+    renderConversations() {
+        const list = document.getElementById('conversationList');
+        list.innerHTML = '';
+
+        if (this.conversations.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.innerHTML = '<div class="empty-state-subtitle">No conversations yet</div>';
+            list.appendChild(emptyDiv);
+            return;
+        }
+
+        this.conversations.forEach(conv => {
+            const item = document.createElement('div');
+            item.className = 'conversation-item';
+            item.textContent = conv.title || 'Untitled Chat';
+            if (conv.id === this.currentConversationId) {
+                item.classList.add('active');
+            }
+            item.addEventListener('click', () => {
+                this.loadConversation(conv.id);
+                this.closeMenu();
+            });
+            list.appendChild(item);
+        });
+    }
+
+    async loadConversation(conversationId) {
+        try {
+            const response = await this.apiClient.get(`/get_conversation/${conversationId}`);
+
+            if (response.ok) {
+                const data = await response.json();
+                this.currentConversationId = conversationId;
+                // Backend returns chat_history, not messages or history
+                this.messageHistory = data.chat_history || data.messages || data.history || [];
+                this.renderMessages();
+            } else if (response.status === 401) {
+                console.log('Not authenticated to load conversation');
+                alert('Please login to view this conversation');
+            }
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            alert('Failed to load conversation');
+        }
+    }
+
+    startNewChat() {
+        this.currentConversationId = null;
+        this.messageHistory = [];
+        this.renderMessages();
+        this.closeMenu();
+    }
+
+    renderMessages() {
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+
+        if (this.messageHistory.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.innerHTML = `
+                <div class="empty-state-icon">💬</div>
+                <div class="empty-state-title">Start a conversation</div>
+                <div class="empty-state-subtitle">Ask me anything!</div>
+            `;
+            container.appendChild(emptyDiv);
+            return;
+        }
+
+        this.messageHistory.forEach(msg => {
+            this.addMessageToUI(msg.content, msg.role === 'user' ? 'user' : 'assistant');
+        });
+
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    }
+
+    addMessageToUI(text, sender) {
+        const container = document.getElementById('chatMessages');
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = sender === 'user' ? 'U' : 'AI';
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'message-text';
+
+        // Render markdown for assistant messages, plain text for user messages
+        if (sender === 'assistant' && window.marked && window.DOMPurify) {
+            const parsedMarkdown = marked.parse(text);
+            textDiv.innerHTML = DOMPurify.sanitize(parsedMarkdown, this.purifyOptions);
+        } else {
+            textDiv.textContent = text;
+        }
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        content.appendChild(textDiv);
+        content.appendChild(timeDiv);
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(content);
+
+        container.appendChild(messageDiv);
+
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    }
+
+    showTypingIndicator() {
+        const container = document.getElementById('chatMessages');
+
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message assistant';
+        typingDiv.id = 'typingIndicator';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = 'AI';
+
+        const indicator = document.createElement('div');
+        indicator.className = 'typing-indicator';
+        indicator.innerHTML = `
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        `;
+
+        typingDiv.appendChild(avatar);
+        typingDiv.appendChild(indicator);
+        container.appendChild(typingDiv);
+
+        container.scrollTop = container.scrollHeight;
+    }
+
+    hideTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    async sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+
+        if (!message) return;
+
+        // Clear input
+        input.value = '';
+        input.style.height = 'auto';
+
+        // Add user message to UI
+        this.addMessageToUI(message, 'user');
+        this.messageHistory.push({ role: 'user', content: message });
+
+        // Disable send button, enable stop button
+        document.getElementById('sendBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+
+        // Show typing indicator
+        this.showTypingIndicator();
+
+        try {
+            // Step 1: Send message to server to create/update conversation
+            console.log('[Chat] Sending message to /api/chat/message');
+            const messageResponse = await this.apiClient.post('/api/chat/message', {
+                message: message,
+                isTemporary: false
+            });
+
+            if (!messageResponse.ok) {
+                throw new Error(`Failed to send message: ${messageResponse.status}`);
+            }
+
+            const messageData = await messageResponse.json();
+            console.log('[Chat] Message sent, conversation ID:', messageData.conversationId);
+
+            // Update current conversation ID
+            this.currentConversationId = messageData.conversationId;
+
+            // Hide typing indicator
+            this.hideTypingIndicator();
+
+            // Step 2: Open EventSource stream to get AI response
+            // Note: EventSource doesn't support custom headers, so we pass API key in URL
+            const streamUrl = `${this.apiUrl}/api/chat/stream?conversationId=${this.currentConversationId}&apiKey=${encodeURIComponent(this.apiClient.apiKey)}&platform=${this.apiClient.platform}`;
+            console.log('[Chat] Opening stream:', streamUrl);
+
+            const eventSource = new EventSource(streamUrl, { withCredentials: true });
+            this.currentEventSource = eventSource; // Store reference for stop button
+            let aiResponse = '';
+            let aiMessageDiv = null;
+
+            eventSource.onopen = () => {
+                console.log('[Chat] Stream connection opened');
+            };
+
+            eventSource.onmessage = (event) => {
+                console.log('[Chat] Stream event:', event.data);
+
+                try {
+                    const data = JSON.parse(event.data);
+
+                    // Handle completion marker
+                    if (data.content === '[DONE]') {
+                        console.log('[Chat] Stream completed');
+                        eventSource.close();
+                        this.currentEventSource = null;
+                        document.getElementById('sendBtn').disabled = false;
+                        document.getElementById('stopBtn').disabled = true;
+
+                        // Add to message history
+                        this.messageHistory.push({ role: 'assistant', content: aiResponse });
+
+                        // Reload conversations to update list
+                        this.loadConversations();
+                        return;
+                    }
+
+                    // Handle errors
+                    if (data.error) {
+                        console.error('[Chat] Stream error:', data.error);
+                        if (aiMessageDiv) {
+                            aiMessageDiv.querySelector('.message-text').textContent = `Error: ${data.error}`;
+                        }
+                        eventSource.close();
+                        this.currentEventSource = null;
+                        document.getElementById('sendBtn').disabled = false;
+                        document.getElementById('stopBtn').disabled = true;
+                        return;
+                    }
+
+                    // Handle content chunks
+                    if (data.content) {
+                        aiResponse += data.content;
+
+                        if (!aiMessageDiv) {
+                            // Create AI message div
+                            const container = document.getElementById('chatMessages');
+                            aiMessageDiv = document.createElement('div');
+                            aiMessageDiv.className = 'message assistant';
+
+                            const avatar = document.createElement('div');
+                            avatar.className = 'message-avatar';
+                            avatar.textContent = 'AI';
+
+                            const content = document.createElement('div');
+                            content.className = 'message-content';
+
+                            const textDiv = document.createElement('div');
+                            textDiv.className = 'message-text';
+
+                            // Render markdown for streaming response
+                            if (window.marked && window.DOMPurify) {
+                                const parsedMarkdown = marked.parse(aiResponse);
+                                textDiv.innerHTML = DOMPurify.sanitize(parsedMarkdown, this.purifyOptions);
+                            } else {
+                                textDiv.textContent = aiResponse;
+                            }
+
+                            content.appendChild(textDiv);
+                            aiMessageDiv.appendChild(avatar);
+                            aiMessageDiv.appendChild(content);
+                            container.appendChild(aiMessageDiv);
+                        } else {
+                            // Update existing message with markdown rendering
+                            const textDiv = aiMessageDiv.querySelector('.message-text');
+                            if (window.marked && window.DOMPurify) {
+                                const parsedMarkdown = marked.parse(aiResponse);
+                                textDiv.innerHTML = DOMPurify.sanitize(parsedMarkdown, this.purifyOptions);
+                            } else {
+                                textDiv.textContent = aiResponse;
+                            }
+                        }
+
+                        // Scroll to bottom
+                        document.getElementById('chatMessages').scrollTop =
+                            document.getElementById('chatMessages').scrollHeight;
+                    }
+                } catch (e) {
+                    console.error('[Chat] Error parsing stream data:', e);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('[Chat] Stream error:', error);
+                eventSource.close();
+                this.currentEventSource = null;
+                this.hideTypingIndicator();
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+
+                if (!aiResponse) {
+                    alert('Failed to get response. Please try again.');
+                }
+            };
+
+        } catch (error) {
+            console.error('[Chat] Error sending message:', error);
+            this.hideTypingIndicator();
+            alert('Failed to send message. Please try again.');
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+    }
+
+    async saveConversation() {
+        // Save to local storage
+        await Storage.set({
+            key: `conversation_${this.currentConversationId || 'current'}`,
+            value: JSON.stringify({
+                id: this.currentConversationId,
+                messages: this.messageHistory,
+                updatedAt: new Date().toISOString()
+            })
+        });
+    }
+
+    stopGeneration() {
+        // Close EventSource if it exists
+        if (this.currentEventSource) {
+            this.currentEventSource.close();
+            this.currentEventSource = null;
+            console.log('[Chat] Generation stopped by user');
+        }
+
+        // Re-enable send button and hide typing indicator
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        this.hideTypingIndicator();
+    }
+
+    async clearConversation() {
+        if (!confirm('Clear this conversation? This will save it to history and start a new one.')) {
+            return;
+        }
+
+        try {
+            // Call the reset conversation endpoint (which saves current conversation)
+            const response = await this.apiClient.post('/reset', {
+                conversationId: this.currentConversationId,
+                wasTemporary: false
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Reset local state
+                this.currentConversationId = data.new_conversation_id || null;
+                this.messageHistory = [];
+
+                // Clear UI
+                const messagesContainer = document.getElementById('chatMessages');
+                if (messagesContainer) {
+                    messagesContainer.innerHTML = '';
+                }
+
+                // Render empty state
+                this.renderMessages();
+
+                // Reload conversation history so the cleared conversation appears in History view
+                await this.loadConversations();
+
+                console.log('Conversation cleared and saved to history');
+            } else {
+                alert('Failed to clear conversation. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error clearing conversation:', error);
+            alert('Failed to clear conversation. Please try again.');
+        }
+    }
+
+    switchView(viewId) {
+        // Update navigation
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            if (item.getAttribute('data-view') === viewId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        // Update views
+        const views = document.querySelectorAll('.app-view');
+        views.forEach(view => {
+            if (view.id === viewId) {
+                view.classList.add('active');
+            } else {
+                view.classList.remove('active');
+            }
+        });
+
+        // Update header title
+        const titleMap = {
+            'chatView': 'Bedrock Chat',
+            'historyView': 'Conversation History',
+            'accountView': 'Account'
+        };
+        document.getElementById('appTitle').textContent = titleMap[viewId] || 'Bedrock Chat';
+
+        // Load data for the view
+        if (viewId === 'historyView') {
+            this.loadHistory();
+        } else if (viewId === 'accountView') {
+            this.loadAccountInfo();
+        }
+    }
+
+    async loadHistory() {
+        try {
+            const response = await this.apiClient.get('/conversation_history');
+
+            if (response.ok) {
+                const data = await response.json();
+                const history = data.history || {};
+
+                // Render history sections
+                this.renderHistorySection('historyTodayList', history['Today'] || []);
+                this.renderHistorySection('historyWeekList', history['Previous 7 Days'] || []);
+                this.renderHistorySection('historyMonthList', history['Previous 30 Days'] || []);
+
+                // Show empty state if no history
+                const hasHistory = (history['Today']?.length || 0) +
+                                 (history['Previous 7 Days']?.length || 0) +
+                                 (history['Previous 30 Days']?.length || 0) > 0;
+
+                const emptyHistory = document.getElementById('emptyHistory');
+                if (hasHistory) {
+                    emptyHistory.classList.add('hidden');
+                } else {
+                    emptyHistory.classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading history:', error);
+        }
+    }
+
+    renderHistorySection(listId, items) {
+        const listElement = document.getElementById(listId);
+        if (!listElement) return;
+
+        listElement.innerHTML = '';
+
+        if (items.length === 0) {
+            listElement.parentElement.classList.add('hidden');
+            return;
+        }
+
+        listElement.parentElement.classList.remove('hidden');
+
+        items.forEach(item => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `
+                <div class="history-item-preview">${item.preview}</div>
+                <div class="history-item-time">${new Date(item.timestamp).toLocaleString()}</div>
+            `;
+            historyItem.addEventListener('click', () => {
+                this.loadHistoryConversation(item.id);
+            });
+            listElement.appendChild(historyItem);
+        });
+    }
+
+    async loadHistoryConversation(conversationId) {
+        try {
+            const response = await this.apiClient.get(`/get_conversation/${conversationId}`);
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Load the conversation
+                this.currentConversationId = conversationId;
+                this.messageHistory = data.chat_history || [];
+
+                // Switch to chat view
+                this.switchView('chatView');
+
+                // Render messages
+                this.renderMessages();
+            }
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            alert('Failed to load conversation');
+        }
+    }
+
+    async loadAccountInfo() {
+        // Load user info from session or API
+        try {
+            const response = await this.apiClient.get('/auth/status');
+
+            if (response.ok) {
+                const data = await response.json();
+
+                if (data.user) {
+                    const user = data.user;
+
+                    // Update account UI
+                    const nameElement = document.getElementById('accountName');
+                    const emailElement = document.getElementById('accountEmail');
+                    const avatarElement = document.getElementById('accountAvatar');
+
+                    if (nameElement) nameElement.textContent = user.name || user.email;
+                    if (emailElement) emailElement.textContent = user.email;
+                    if (avatarElement) {
+                        avatarElement.textContent = (user.name || user.email).charAt(0).toUpperCase();
+                    }
+
+                    // Update account info details
+                    document.getElementById('infoEmail').textContent = user.email || '-';
+                    document.getElementById('infoName').textContent = user.name || '-';
+                    document.getElementById('infoCreated').textContent = user.createdAt ?
+                        new Date(user.createdAt).toLocaleDateString() : '-';
+
+                    // Update MFA status
+                    const mfaStatusElement = document.getElementById('mfaStatus');
+                    const enableMfaBtn = document.getElementById('enableMfaBtn');
+                    const disableMfaBtn = document.getElementById('disableMfaBtn');
+
+                    if (mfaStatusElement) {
+                        mfaStatusElement.textContent = user.mfaEnabled ? 'Enabled' : 'Not enabled';
+                    }
+
+                    if (enableMfaBtn && disableMfaBtn) {
+                        if (user.mfaEnabled) {
+                            enableMfaBtn.classList.add('hidden');
+                            disableMfaBtn.classList.remove('hidden');
+                        } else {
+                            enableMfaBtn.classList.remove('hidden');
+                            disableMfaBtn.classList.add('hidden');
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading account info:', error);
+        }
+    }
+}
+
+// Initialize the app
+window.addEventListener('DOMContentLoaded', () => {
+    new MobileChatClient();
+});

@@ -1,0 +1,70 @@
+/* login-responsive.css - Responsive styles for login page */
+
+/* Base responsive container */
+.login-responsive-container {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Media queries for different screen sizes */
+@media screen and (max-width: 768px) {
+  /* Container adjustments */
+  .auth-form-container {
+    max-width: 100%;
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 6px;
+  }
+  
+  /* Form adjustments */
+  .auth-form {
+    width: 100%;
+  }
+  
+  /* Input field adjustments */
+  .form-group input[type="email"],
+  .form-group input[type="password"],
+  .form-group input[type="text"] {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 12px;
+  }
+  
+  /* Button adjustments */
+  .auth-button {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+  }
+}
+
+/* Small mobile devices */
+@media screen and (max-width: 480px) {
+  .auth-form-container {
+    margin: 10px auto;
+    padding: 15px;
+  }
+  
+  .auth-form-container h2 {
+    font-size: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .auth-links {
+    font-size: 13px;
+  }
+}
+
+/* Fix for mobile viewport height issues */
+@media screen and (max-height: 600px) {
+  .auth-form-container {
+    margin: 10px auto;
+  }
+}
+
+/* Ensure form elements don't overflow */
+.form-group input {
+  max-width: 100%;
+}

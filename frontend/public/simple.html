@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bedrock Express Simple Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #chat-container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .user-message {
+            background-color: #e6f7ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .ai-message {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        #message-form {
+            display: flex;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bedrock Express AI Chat</h1>
+    <div id="chat-container">
+        <div class="ai-message">Hello! I'm your AI assistant. How can I help you today?</div>
+    </div>
+    <form id="message-form">
+        <input type="text" id="message-input" placeholder="Type your message..." required>
+        <button type="submit">Send</button>
+    </form>
+
+    <script>
+        document.getElementById('message-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                // Add user message to chat
+                addMessage(message, 'user');
+                input.value = '';
+                
+                // Send message to server
+                sendMessage(message);
+            }
+        });
+        
+        function addMessage(text, sender) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = sender + '-message';
+            messageDiv.textContent = text;
+            chatContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function sendMessage(message) {
+            // First, display a "thinking" indicator
+            const thinkingId = Date.now();
+            addMessage('Thinking...', 'ai');
+            
+            // Send the message to the server
+            fetch('/api/chat/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                // Remove the "thinking" message
+                const chatContainer = document.getElementById('chat-container');
+                chatContainer.lastChild.remove();
+                
+                // Start streaming the response
+                streamResponse();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Remove the "thinking" message
+                const chatContainer = document.getElementById('chat-container');
+                chatContainer.lastChild.remove();
+                
+                // Add error message
+                addMessage('Sorry, I was unable to process your request. Please try again.', 'ai');
+            });
+        }
+        
+        function streamResponse() {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'ai-message';
+            chatContainer.appendChild(messageDiv);
+            
+            // Create a new EventSource to receive the streamed response
+            const eventSource = new EventSource('/api/chat/stream');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.done) {
+                    // End of stream
+                    eventSource.close();
+                } else if (data.content) {
+                    // Append content to the message
+                    messageDiv.textContent += data.content;
+                    
+                    // Scroll to bottom
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            };
+            
+            eventSource.onerror = function() {
+                messageDiv.textContent += " [Connection lost]";
+                eventSource.close();
+            };
+        }
+    </script>
+</body>
+</html>

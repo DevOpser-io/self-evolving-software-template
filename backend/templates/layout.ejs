@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><%= typeof title !== 'undefined' ? title : 'Bedrock Express AI' %></title>
+    <link rel="icon" href="/static/icon.png" type="image/png">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/static/css/litera-bootstrap.min.css">
+    <link rel="stylesheet" href="/static/fontawesome/all.min.css">
+    <link rel="stylesheet" href="/static/nav.css">
+    <link rel="stylesheet" href="/static/dist/bundle.css">
+    <link rel="stylesheet" href="/static/chat-custom.css">
+    
+    <!-- JavaScript Files -->
+    <script src="/static/js/bootstrap.bundle.min.js" defer></script>
+    <script src="/static/csrf.js" defer></script>
+    
+    <%- typeof extraHead !== 'undefined' ? extraHead : '' %>
+</head>
+<body>
+    <!-- Fixed header that stays above the sidebar -->
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">Bedrock Express AI</a>
+                <!-- Direct Admin Link -->
+                <a href="/admin" class="btn btn-sm btn-outline-light ms-2">Admin</a>
+                
+                <!-- hamburger toggler -->
+                <button 
+                    class="navbar-toggler" 
+                    type="button" 
+                    data-bs-toggle="collapse" 
+                    data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" 
+                    aria-expanded="false" 
+                    aria-label="Toggle navigation"
+                >
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <%- include('./partials/nav') %>
+            </div>
+        </nav>
+        <% if (flash && flash.length > 0) { %>
+        <div class="alert-container">
+            <% flash.forEach(function(f) { %>
+                <div class="alert alert-<%= f.type %> alert-dismissible fade show" role="alert">
+                    <%= f.message %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+    
+    <!-- Debug information - only visible to admins -->
+    <% if (locals.user && locals.user.isAdmin) { %>
+    <div class="alert alert-info">
+        <p><strong>Debug Info:</strong> User is <%= JSON.stringify(locals.user) %></p>
+    </div>
+    <% } %>
+    </header>
+
+    <main class="container-fluid p-0">
+        <div class="row app-container m-0">
+            <!-- Content for each page -->
+            <%- body %>
+        </div>
+    </main>
+    
+    <%- typeof extraScripts !== 'undefined' ? extraScripts : '' %>
+</body>
+</html>

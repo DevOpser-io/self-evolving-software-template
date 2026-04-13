@@ -1,0 +1,211 @@
+<% if (typeof title === 'undefined') { %>
+<% title = 'MFA Verification' %>
+<% } %>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<%- include('./partials/favicon') %>
+
+<% /* Include any extra CSS */ %>
+<link rel="stylesheet" href="/static/dist/mfa.css">
+<link rel="stylesheet" href="/static/mfa-responsive.css">
+<link rel="stylesheet" href="/static/css/mfa-status-messages.css">
+
+<div class="mfa-verify-page">
+    <div class="mfa-container">
+        <div class="auth-form-container">
+            <h2>Two-Factor Authentication</h2>
+            
+            <div class="mfa-tabs">
+                <button class="tab-button <%= typeof active_tab === 'undefined' || active_tab === 'authenticator' ? 'active' : '' %>" data-tab="authenticator">
+                    <span class="tab-icon">📱</span>
+                    Authenticator
+                </button>
+                <button class="tab-button <%= typeof active_tab !== 'undefined' && active_tab === 'email' ? 'active' : '' %>" data-tab="email">
+                    <span class="tab-icon">📧</span>
+                    Email
+                </button>
+                <button class="tab-button <%= typeof active_tab !== 'undefined' && active_tab === 'backup' ? 'active' : '' %>" data-tab="backup">
+                    <span class="tab-icon">🔑</span>
+                    Backup Code
+                </button>
+            </div>
+
+            <!-- Authenticator Tab -->
+            <div class="tab-content<%= typeof active_tab === 'undefined' || active_tab === 'authenticator' ? ' active' : '' %>" 
+                 id="authenticator-tab"
+                 <%= typeof active_tab !== 'undefined' && active_tab !== 'authenticator' ? 'aria-hidden="true"' : 'aria-hidden="false"' %>>
+                <p class="text-center">Enter the code from your authenticator app.</p>
+                <form method="POST" action="/auth/mfa-verify" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <div class="form-group">
+                        <label for="token-auth">Authenticator Code</label>
+                        <input type="text" 
+                               name="token" 
+                               id="token-auth" 
+                               required 
+                               autocomplete="off" 
+                               inputmode="numeric" 
+                               pattern="[0-9]*" 
+                               maxlength="6" 
+                               placeholder="Enter 6-digit code">
+                    </div>
+                    <button type="submit" class="auth-button login">Verify</button>
+                </form>
+            </div>
+
+            <!-- Email Tab -->
+            <div class="tab-content<%= typeof active_tab !== 'undefined' && active_tab === 'email' ? ' active' : '' %>" 
+                 id="email-tab"
+                 <%= typeof active_tab !== 'undefined' && active_tab === 'email' ? 'aria-hidden="false"' : 'aria-hidden="true"' %>>
+                <div class="email-verification-section">
+                    <div class="email-info">
+                        <p>Need a verification code sent to your email?</p>
+                        <form action="/auth/send-mfa-code" method="POST" class="email-code-form">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                            <button type="submit" class="auth-button" data-loading-text="Sending...">Send Code</button>
+                        </form>
+                        <div class="status-messages"></div>
+                    </div>
+                </div>
+
+                <form method="POST" action="/auth/mfa-verify" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="method" value="email">
+                    <div class="form-group">
+                        <label for="token-email">Email Verification Code</label>
+                        <input type="text" 
+                               name="token" 
+                               id="token-email" 
+                               required 
+                               autocomplete="off" 
+                               inputmode="numeric" 
+                               pattern="[0-9]*" 
+                               maxlength="6" 
+                               placeholder="Enter 6-digit code">
+                    </div>
+                    <button type="submit" class="auth-button login">Verify</button>
+                </form>
+            </div>
+
+            <!-- Backup Code Tab -->
+            <div class="tab-content<%= typeof active_tab !== 'undefined' && active_tab === 'backup' ? ' active' : '' %>" 
+                 id="backup-tab"
+                 <%= typeof active_tab !== 'undefined' && active_tab === 'backup' ? 'aria-hidden="false"' : 'aria-hidden="true"' %>>
+                <p class="text-center">Use one of your backup codes to verify your identity.</p>
+                <form method="POST" action="/auth/mfa-verify" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="method" value="backup">
+                    <div class="form-group">
+                        <label for="backup_code">Backup Code</label>
+                        <input type="text" 
+                               name="backupCode" 
+                               id="backup_code" 
+                               autocomplete="off"
+                               placeholder="Enter your backup code">
+                    </div>
+                    <button type="submit" class="auth-button login">Verify</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="flash-messages" class="flashes"></div>
+
+<script nonce="<%= typeof cspNonce !== 'undefined' ? cspNonce : '' %>">
+document.addEventListener('DOMContentLoaded', function() {
+  // Tab switching
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const tabId = this.dataset.tab;
+
+      // Update active states
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => {
+        content.classList.remove('active');
+        content.setAttribute('aria-hidden', 'true');
+      });
+
+      this.classList.add('active');
+      const targetTab = document.getElementById(tabId + '-tab');
+      if (targetTab) {
+        targetTab.classList.add('active');
+        targetTab.setAttribute('aria-hidden', 'false');
+      }
+    });
+  });
+
+  // Add loading state to all verify buttons
+  const forms = document.querySelectorAll('.auth-form');
+  forms.forEach(form => {
+    form.addEventListener('submit', function(e) {
+      const button = this.querySelector('button[type="submit"]');
+      if (button && !button.disabled) {
+        button.disabled = true;
+        button.innerHTML = '<svg class="mfa-spinner" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>Verifying...';
+        button.classList.add('btn-loading-state');
+      }
+    });
+  });
+
+  // Add loading state to send code button
+  const sendCodeForm = document.querySelector('.email-code-form');
+  if (sendCodeForm) {
+    sendCodeForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const button = this.querySelector('button');
+      const statusMessages = document.querySelector('.status-messages');
+
+      if (button && !button.disabled) {
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.innerHTML = '<svg class="mfa-spinner" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>Sending...';
+        button.classList.add('btn-loading-state');
+
+        // Submit via fetch
+        fetch('/auth/send-mfa-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+          button.disabled = false;
+          button.textContent = originalText;
+          button.classList.remove('btn-loading-state');
+
+          if (statusMessages) {
+            if (data.success) {
+              statusMessages.innerHTML = '<div class="flash mfa-success">' + (data.message || 'Code sent to your email!') + '</div>';
+            } else {
+              statusMessages.innerHTML = '<div class="flash mfa-error">' + (data.message || data.error || 'Failed to send code') + '</div>';
+            }
+          }
+        })
+        .catch(error => {
+          button.disabled = false;
+          button.textContent = originalText;
+          button.classList.remove('btn-loading-state');
+          if (statusMessages) {
+            statusMessages.innerHTML = '<div class="flash mfa-error">Network error. Please try again.</div>';
+          }
+        });
+      }
+    });
+  }
+
+  // Auto-format numeric inputs
+  const numericInputs = document.querySelectorAll('input[inputmode="numeric"]');
+  numericInputs.forEach(input => {
+    input.addEventListener('input', function() {
+      this.value = this.value.replace(/[^0-9]/g, '');
+    });
+  });
+});
+</script>

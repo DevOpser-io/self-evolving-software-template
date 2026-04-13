@@ -1,0 +1,142 @@
+<% if (typeof title === 'undefined') { %>
+<% title = 'MFA Setup' %>
+<% } %>
+
+<%- include('./partials/favicon') %>
+
+<% /* Include any extra CSS */ %>
+<link rel="stylesheet" href="/static/dist/mfa.css">
+<link rel="stylesheet" href="/static/css/mfa-status-messages.css">
+<style nonce="<%= cspNonce %>">
+.setup-info {
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+}
+
+.setup-info p {
+    color: #374151;
+    margin: 0;
+}
+</style>
+
+<div class="mfa-setup-page">
+  <div class="mfa-container">
+    <div class="mfa-card">
+      <h2>Set Up Two-Factor Authentication</h2>
+      
+      <div class="progress-bar">
+        <div class="steps">
+          <div class="step active">1. Setup</div>
+          <div class="step">2. Verify</div>
+        </div>
+      </div>
+
+      <div class="setup-content">
+        <div class="setup-info">
+          <p>Please set up an authenticator app (like Microsoft Authenticator or Authy) to secure your account.</p>
+        </div>
+
+        <div id="authenticator-section" class="setup-section active">
+          <div class="qr-container">
+            <% if (qr) { %>
+              <div class="qr-image">
+                <img src="<%= qr %>" alt="MFA QR Code">
+              </div>
+              <button type="button" class="toggle-key-btn js-toggle-key">
+                Can't scan? Enter key manually
+              </button>
+              <div class="secret-key hidden">
+                <code><%= secret %></code>
+              </div>
+            <% } else { %>
+              <div class="error">Failed to generate QR code</div>
+            <% } %>
+          </div>
+        </div>
+
+        <form method="POST" action="/auth/mfa-setup" class="mfa-setup-form" id="mfa-setup-form">
+          <input type="hidden" name="method" value="authenticator">
+          <% if (typeof returnToMobile !== 'undefined' && returnToMobile) { %>
+          <input type="hidden" name="returnToMobile" value="true">
+          <% } else if (typeof returnToAccount !== 'undefined' && returnToAccount) { %>
+          <input type="hidden" name="returnToAccount" value="true">
+          <% } %>
+
+          <div class="verification-section">
+            <label for="verification_code">Enter Verification Code</label>
+            <input type="text"
+                  name="verification_code"
+                  id="verification_code"
+                  class="verification-input"
+                  inputmode="numeric"
+                  maxlength="6"
+                  pattern="[0-9]*"
+                  placeholder="000000"
+                  autocomplete="one-time-code"
+                  required>
+
+            <button type="submit" name="action" value="verify" class="submit-button" id="verify-btn">
+              <span class="btn-text">Verify and Enable 2FA</span>
+              <span class="btn-loading">
+                <svg class="mfa-spinner" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/>
+                </svg>
+                Generating backup codes...
+              </span>
+            </button>
+            <p class="loading-hint" id="loading-hint">
+              This may take a few seconds while we securely generate your backup codes.
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="<%= cspNonce %>">
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize toggle key functionality
+  const toggleKeyBtn = document.querySelector('.js-toggle-key');
+  const secretKeyElem = document.querySelector('.secret-key');
+  if (toggleKeyBtn && secretKeyElem) {
+    toggleKeyBtn.addEventListener('click', () => {
+      secretKeyElem.classList.toggle('hidden');
+      toggleKeyBtn.textContent = secretKeyElem.classList.contains('hidden')
+        ? "Can't scan? Enter key manually"
+        : 'Hide manual key';
+    });
+  }
+
+  // Add loading state to form submission
+  const form = document.getElementById('mfa-setup-form');
+  const verifyBtn = document.getElementById('verify-btn');
+  const btnText = verifyBtn.querySelector('.btn-text');
+  const btnLoading = verifyBtn.querySelector('.btn-loading');
+  const loadingHint = document.getElementById('loading-hint');
+  const codeInput = document.getElementById('verification_code');
+
+  form.addEventListener('submit', function(e) {
+    // Validate code format before showing loading
+    const code = codeInput.value.trim();
+    if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+      return; // Let browser validation handle it
+    }
+
+    // Show loading state
+    verifyBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
+    btnLoading.style.alignItems = 'center';
+    btnLoading.style.gap = '8px';
+    loadingHint.style.display = 'block';
+  });
+
+  // Auto-format code input (numbers only)
+  codeInput.addEventListener('input', function() {
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+});
+</script>

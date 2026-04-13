@@ -1,0 +1,122 @@
+<!-- DevOpser Lite Sites Dashboard -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Sites - DevOpser Lite</title>
+  <link rel="icon" href="/static/icon.png" type="image/png">
+
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="/static/css/litera-bootstrap.min.css">
+  <link rel="stylesheet" href="/static/fontawesome/all.min.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="stylesheet" href="/static/css/sites-dashboard.css">
+
+  <script src="/static/js/bootstrap.bundle.min.js" defer></script>
+  <script src="/static/js/sites-dashboard.js" defer></script>
+</head>
+<body>
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/sites">DevOpser Lite</a>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="fa-solid fa-circle-plus me-1"></i> New Site
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/sites">My Sites</a>
+            </li>
+          </ul>
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="/account">Account</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/auth/logout">Logout</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="sites-container">
+    <div class="page-header">
+      <div>
+        <h1>My Sites</h1>
+        <p class="text-muted">Create and manage your websites</p>
+      </div>
+      <a href="/" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i> Create Site
+      </a>
+    </div>
+
+    <% if (sites && sites.length > 0) { %>
+    <div class="sites-list">
+      <% sites.forEach(site => { %>
+      <div class="site-card">
+        <div class="site-card-header">
+          <div>
+            <h3 class="site-name"><%= site.name %></h3>
+            <div class="site-url">
+              <i class="fa-solid fa-globe me-1"></i>
+              <%= site.slug %>.example.com
+            </div>
+          </div>
+          <span class="status-badge status-<%= site.status %>">
+            <i class="fa-solid fa-circle status-icon"></i>
+            <%= site.status.charAt(0).toUpperCase() + site.status.slice(1) %>
+          </span>
+        </div>
+
+        <p class="text-muted small mb-2">
+          Created <%= new Date(site.createdAt).toLocaleDateString() %>
+          <% if (site.status === 'published' && site.publishedConfig) { %>
+          &bull; Last published <%= new Date(site.updatedAt).toLocaleDateString() %>
+          <% } %>
+        </p>
+
+        <div class="site-card-actions">
+          <a href="/sites/<%= site.id %>/builder" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-pencil me-1"></i> Edit
+          </a>
+          <% if (site.status === 'published') { %>
+          <a href="https://<%= site.slug %>.example.com" target="_blank" class="btn btn-outline-success btn-sm">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> View Live
+          </a>
+          <% } %>
+          <button class="btn btn-outline-danger btn-sm delete-site-btn" data-site-id="<%= site.id %>" data-site-name="<%= site.name %>">
+            <i class="fa-solid fa-trash me-1"></i> Delete
+          </button>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %>
+    <div class="empty-state">
+      <i class="fa-solid fa-palette"></i>
+      <h3>No sites yet</h3>
+      <p class="text-muted mb-4">Create your first website in minutes with AI assistance</p>
+      <a href="/" class="btn btn-primary btn-lg">
+        <i class="fa-solid fa-plus me-1"></i> Create Your First Site
+      </a>
+    </div>
+    <% } %>
+  </main>
+</body>
+</html>

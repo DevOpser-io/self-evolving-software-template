@@ -1,0 +1,145 @@
+<% if (typeof title === 'undefined') { %>
+<% title = 'MFA Backup Codes' %>
+<% } %>
+
+<%- include('./partials/favicon') %>
+
+<% /* Include any extra CSS */ %>
+<link rel="stylesheet" href="/static/dist/mfa.css">
+<link rel="stylesheet" href="/static/css/mfa-status-messages.css">
+<style nonce="<%= cspNonce %>">
+.auth-form-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.important-notice {
+    color: #dc2626;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-weight: 500;
+}
+
+.backup-codes-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.backup-code {
+    background: #f3f4f6;
+    padding: 1rem;
+    text-align: center;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 1.2rem;
+}
+
+.backup-info {
+    margin: 2rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 4px;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.secondary-button {
+    padding: 0.75rem 1.5rem;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.primary-button {
+    padding: 0.75rem 1.5rem;
+    background: #dc2626;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+}
+</style>
+
+<div class="auth-form-container">
+    <h2>Save Your Backup Codes</h2>
+    <p class="important-notice">Important: Save these codes in a secure place. They will not be shown again!</p>
+    
+    <div class="backup-codes-container">
+        <% backupCodes.forEach(code => { %>
+            <div class="backup-code"><%= code %></div>
+        <% }); %>
+    </div>
+
+    <div class="backup-info">
+        <p>Each backup code can be used once if you lose access to your authenticator app.</p>
+        <p>Keep these codes somewhere safe but accessible.</p>
+    </div>
+
+    <div class="actions">
+        <button onclick="printCodes()" class="secondary-button">Print Codes</button>
+        <a href="<%= returnUrl || '/chat' %>" class="primary-button" id="continue-btn">
+            <span class="btn-text">Continue</span>
+            <span class="btn-loading">
+                <svg class="mfa-spinner" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/>
+                </svg>
+                Loading...
+            </span>
+        </a>
+    </div>
+</div>
+
+<script nonce="<%= cspNonce %>">
+function printCodes() {
+    window.print();
+}
+
+// Copy code functionality (optional enhancement)
+document.addEventListener('DOMContentLoaded', function() {
+    const backupCodes = document.querySelectorAll('.backup-code');
+    backupCodes.forEach(codeElement => {
+        codeElement.addEventListener('click', function() {
+            const code = this.textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                // Visual feedback for copy
+                const originalBackground = this.style.background;
+                this.style.background = '#d1fae5';
+                setTimeout(() => {
+                    this.style.background = originalBackground;
+                }, 1000);
+            });
+        });
+        // Add title attribute to indicate clickable
+        codeElement.title = 'Click to copy';
+        codeElement.style.cursor = 'pointer';
+    });
+
+    // Add loading state to Continue button
+    const continueBtn = document.getElementById('continue-btn');
+    if (continueBtn) {
+        continueBtn.addEventListener('click', function(e) {
+            const btnText = this.querySelector('.btn-text');
+            const btnLoading = this.querySelector('.btn-loading');
+            if (btnText && btnLoading) {
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'inline-flex';
+                btnLoading.style.alignItems = 'center';
+                btnLoading.style.gap = '6px';
+            }
+            this.style.pointerEvents = 'none';
+            this.style.opacity = '0.7';
+        });
+    }
+});
+</script>

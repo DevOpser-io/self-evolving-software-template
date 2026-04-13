@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Admin Panel</title>
+    <link href="/static/css/litera-bootstrap.min.css" rel="stylesheet">
+    <link href="/static/fontawesome/all.min.css" rel="stylesheet">
+    <link href="/admin-panel.css" rel="stylesheet">
+    <%- include('../partials/favicon') %>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="p-3">
+            <h4 class="text-white">Admin Panel</h4>
+            <hr class="text-white">
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link <%= title.includes('Dashboard') ? 'active' : '' %>" href="/admin-panel">
+                    <i class="fa-solid fa-gauge"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= title.includes('User') ? 'active' : '' %>" href="/admin-panel/users">
+                    <i class="fa-solid fa-users"></i> Users
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= title.includes('Conversation') ? 'active' : '' %>" href="/admin-panel/conversations">
+                    <i class="fa-solid fa-comments"></i> Conversations
+                </a>
+            </li>
+            <li class="nav-item">
+                <hr class="text-secondary">
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fa-solid fa-house"></i> Back to App
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-access/logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </li>
+        </ul>
+        
+        <!-- User info at bottom -->
+        <div class="position-absolute bottom-0 w-100 p-3 border-top border-secondary">
+            <small class="text-muted">
+                Logged in as:<br>
+                <strong class="text-white"><%= user.email %></strong>
+            </small>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0"><%= title %></h1>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">Online</span>
+                    <small class="text-muted">Last updated: <span id="last-updated"></span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flash messages -->
+        <% if (typeof success !== 'undefined' && success.length > 0) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+        <% if (typeof error !== 'undefined' && error.length > 0) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <!-- Page content -->
+        <%- body %>
+    </div>
+
+    <!-- Scripts -->
+    <script nonce="<%= cspNonce %>" src="/static/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<%= cspNonce %>">
+        // Update timestamp
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        
+        // Auto-refresh timestamp every minute
+        setInterval(() => {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }, 60000);
+
+        // AJAX helper for admin actions
+        function adminAction(url, method = 'POST', data = {}) {
+            return fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method !== 'GET' ? JSON.stringify(data) : undefined
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Simple refresh for now
+                } else {
+                    alert('Error: ' + (data.message || 'Operation failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
+            });
+        }
+
+        // Toggle functions
+        function toggleAdmin(userId) {
+            if (confirm('Are you sure you want to toggle admin status for this user?')) {
+                adminAction(`/admin-panel/users/${userId}/toggle-admin`);
+            }
+        }
+
+        function toggleVerified(userId) {
+            if (confirm('Are you sure you want to toggle email verification for this user?')) {
+                adminAction(`/admin-panel/users/${userId}/toggle-verified`);
+            }
+        }
+
+        function deleteConversation(conversationId) {
+            if (confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                adminAction(`/admin-panel/conversations/${conversationId}`, 'DELETE');
+            }
+        }
+    </script>
+</body>
+</html>

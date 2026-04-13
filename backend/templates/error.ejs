@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Bedrock Express</title>
+    <link rel="icon" href="/static/icon.png" type="image/png">
+    <link rel="stylesheet" href="/static/css/litera-bootstrap.min.css">
+    <style nonce="<%= cspNonce %>">
+        .error-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-container bg-light">
+            <h1 class="text-danger mb-4">Error</h1>
+            <p class="lead"><%= message %></p>
+            <% if (error && error.stack) { %>
+                <pre class="mt-4 p-3 bg-dark text-light"><%= error.stack %></pre>
+            <% } %>
+            <a href="/" class="btn btn-primary mt-4">Return Home</a>
+        </div>
+    </div>
+</body>
+</html>

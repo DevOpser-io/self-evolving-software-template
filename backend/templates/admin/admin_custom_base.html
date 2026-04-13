@@ -1,0 +1,24 @@
+{% extends 'admin/base.html' %}
+
+{% block head_inner %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/litera-bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome/all.min.css') }}">
+{% endblock head_inner %}
+
+{% block body %}
+
+<div class="container-fluid mt-4">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+  {% block page_content %}{% endblock page_content %}
+</div>
+
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+{% endblock body %}

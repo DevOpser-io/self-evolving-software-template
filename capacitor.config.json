@@ -1,0 +1,43 @@
+{
+  "appId": "com.example.v1b3coder",
+  "appName": "v1b3coder",
+  "webDir": "frontend/public/static/dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "http://localhost:*",
+      "https://localhost",
+      "capacitor://localhost",
+      "ionic://localhost"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": true,
+    "scrollEnabled": true
+  },
+  "plugins": {
+    "Storage": {
+      "group": "v1b3coderStorage"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0f0f0f",
+      "showSpinner": false,
+      "androidSpinnerStyle": "small",
+      "iosSpinnerStyle": "small",
+      "spinnerColor": "#667eea"
+    }
+  }
+}

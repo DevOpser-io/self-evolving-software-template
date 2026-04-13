@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Admin Panel</title>
+    <link href="/static/css/litera-bootstrap.min.css" rel="stylesheet">
+    <link href="/static/fontawesome/all.min.css" rel="stylesheet">
+    <link href="/admin-panel.css" rel="stylesheet">
+    <%- include('../partials/favicon') %>
+</head>
+<body>
+    <!-- Mobile menu toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    
+    <!-- Mobile overlay -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="p-3">
+            <h4 class="text-white">Admin Panel</h4>
+            <hr class="text-white">
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel">
+                    <i class="fa-solid fa-gauge"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel/users">
+                    <i class="fa-solid fa-users"></i> Users
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/admin-panel/conversations">
+                    <i class="fa-solid fa-comments"></i> Conversations
+                </a>
+            </li>
+            <li class="nav-item">
+                <hr class="text-secondary">
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fa-solid fa-house"></i> Back to App
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-access/logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </li>
+        </ul>
+        
+        <!-- User info at bottom -->
+        <div class="position-absolute bottom-0 w-100 p-3 border-top border-secondary">
+            <small class="text-muted">
+                Logged in as:<br>
+                <strong class="text-white"><%= user.email %></strong>
+            </small>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <a href="/admin-panel" class="btn btn-outline-secondary btn-sm me-3 d-md-none" title="Back to Dashboard">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <h1 class="h3 mb-0"><%= title %></h1>
+                </div>
+                <div class="d-flex align-items-center">
+                    <small class="text-muted">Last updated: <span id="last-updated"></span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversations Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">All Conversations</h5>
+        <div>
+            <span class="badge bg-primary"><%= conversations.length %> conversations on this page</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <% if (conversations.length > 0) { %>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="d-none d-md-table-cell">Conversation ID</th>
+                            <th>User</th>
+                            <th class="d-none d-sm-table-cell">Started</th>
+                            <th class="d-none d-sm-table-cell">Ended</th>
+                            <th class="d-none d-md-table-cell">Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% conversations.forEach(conv => { %>
+                            <tr>
+                                <td class="d-none d-md-table-cell"><code><%= conv.conversation_id %></code></td>
+                                <td>
+                                    <% if (conv.User) { %>
+                                        <a href="/admin-panel/users/<%= conv.user_id %>" class="text-decoration-none">
+                                            <%= conv.User.email %>
+                                        </a>
+                                        <% if (conv.User.name) { %>
+                                            <br><small class="text-muted"><%= conv.User.name %></small>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="text-muted">User ID: <%= conv.user_id %></span>
+                                    <% } %>
+                                </td>
+                                <td class="d-none d-sm-table-cell">
+                                    <small class="text-muted">
+                                        <%= new Date(conv.started_at).toLocaleString() %>
+                                    </small>
+                                </td>
+                                <td class="d-none d-sm-table-cell">
+                                    <% if (conv.ended_at) { %>
+                                        <small class="text-muted">
+                                            <%= new Date(conv.ended_at).toLocaleString() %>
+                                        </small>
+                                    <% } else { %>
+                                        <span class="badge bg-success">Active</span>
+                                    <% } %>
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="badge bg-primary">
+                                        <i class="fa-solid fa-floppy-disk"></i> Persistent
+                                    </span>
+                                </td>
+                                <td>
+                                    <% if (!conv.ended_at) { %>
+                                        <span class="badge bg-success">
+                                            <i class="fa-solid fa-circle"></i> Ongoing
+                                        </span>
+                                    <% } else { %>
+                                        <span class="badge bg-secondary">
+                                            <i class="fa-solid fa-circle-check"></i> Completed
+                                        </span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <% if (conv.User) { %>
+                                        <a href="/admin-panel/users/<%= conv.user_id %>" 
+                                           class="btn btn-outline-primary btn-sm" title="View User">
+                                            <i class="fa-solid fa-user"></i>
+                                        </a>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <% if (pagination.totalPages > 1) { %>
+                <nav aria-label="Conversation pagination">
+                    <ul class="pagination justify-content-center mt-3">
+                        <% if (pagination.hasPrevPage) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= pagination.prevPage %>">Previous</a>
+                            </li>
+                        <% } %>
+                        
+                        <% for (let i = 1; i <= pagination.totalPages; i++) { %>
+                            <li class="page-item <%= i === pagination.currentPage ? 'active' : '' %>">
+                                <a class="page-link" href="?page=<%= i %>"><%= i %></a>
+                            </li>
+                        <% } %>
+                        
+                        <% if (pagination.hasNextPage) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= pagination.nextPage %>">Next</a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </nav>
+            <% } %>
+
+        <% } else { %>
+            <div class="text-center py-5">
+                <i class="fa-solid fa-comments text-muted empty-state-icon"></i>
+                <h4 class="text-muted mt-3">No Conversations Found</h4>
+                <p class="text-muted">There are no conversations in the system yet.</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Conversation Statistics -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-primary">
+                    <%= conversations.filter(c => !c.ended_at).length %>
+                </h3>
+                <p class="text-muted mb-0">Active Conversations</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-success">
+                    <%= conversations.filter(c => c.ended_at).length %>
+                </h3>
+                <p class="text-muted mb-0">Completed Conversations</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div> <!-- End main-content -->
+
+    <!-- Mobile floating back to app button -->
+    <a href="/" class="mobile-back-to-app" title="Back to Chat App">
+        <i class="fa-solid fa-house-fill"></i>
+    </a>
+
+    <!-- Scripts -->
+    <script nonce="<%= cspNonce %>" src="/static/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<%= cspNonce %>">
+        // Update timestamp
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        
+        // Auto-refresh timestamp every minute
+        setInterval(() => {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }, 60000);
+
+        // AJAX helper for admin actions
+        function adminAction(url, method = 'POST', data = {}) {
+            return fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method !== 'GET' ? JSON.stringify(data) : undefined
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Simple refresh for now
+                } else {
+                    alert('Error: ' + (data.message || 'Operation failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
+            });
+        }
+
+        // Mobile menu functionality
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+        
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('show');
+            mobileOverlay.classList.toggle('show');
+        }
+        
+        function closeMobileMenu() {
+            sidebar.classList.remove('show');
+            mobileOverlay.classList.remove('show');
+        }
+        
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        }
+        
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', closeMobileMenu);
+        }
+        
+        // Close menu when clicking sidebar links on mobile
+        const sidebarLinks = sidebar.querySelectorAll('a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            });
+        });
+        
+        // Close menu on window resize if open
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+
+        // Note: Conversation management is view-only for security
+        // Conversations are automatically managed by the system
+    </script>
+</body>
+</html>

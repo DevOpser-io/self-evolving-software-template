@@ -1,0 +1,43 @@
+<!-- templates/admin/dashboard.html -->
+{% extends 'admin/admin_custom_base.html' %}
+
+{% block page_content %}
+<h1>Admin Dashboard</h1>
+<div class="row">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>Total Users</h5>
+        <p>{{ user_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>Active Subscriptions</h5>
+        <p>{{ active_subscriptions }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Recent Signups</h2>
+<table class="table table-striped">
+  <thead>
+    <tr><th>Email</th><th>Created At</th></tr>
+  </thead>
+  <tbody>
+  {% for user in recent_signups %}
+    <tr>
+      <td>{{ user.email }}</td>
+      <td>{{ user.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="mt-4">
+    <a class="btn btn-primary" href="{{ url_for('routes_bp.chat_page') }}">Return to Chat</a>
+</div>
+{% endblock %}

@@ -1,0 +1,207 @@
+.account-page-wrapper {
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.account-page {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+}
+
+.account-container {
+    padding: 1.5rem;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.settings-section {
+    margin-bottom: 2.5rem;
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section h3 {
+    color: #111827;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.security-methods {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.security-method {
+    background: white;
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+}
+
+.security-method:last-child {
+    margin-bottom: 0;
+}
+
+.method-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.method-name {
+    font-weight: 500;
+    color: #111827;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-badge.enabled {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.disabled {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.method-description {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.method-actions {
+    margin-top: 1rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    border: none;
+}
+
+.btn.primary {
+    background-color: #2563eb;
+    color: white;
+}
+
+.btn.danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.subscription-info {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    color: #374151;
+}
+
+/* Account info grid for security settings */
+.account-info {
+    margin-bottom: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.info-value {
+    color: #6b7280;
+}
+
+/* Security section specific styles */
+.account-section.security-section {
+    position: relative;
+}
+
+.account-info.security-info {
+    opacity: 1;
+}
+
+.info-value .security-status {
+    color: #2d3748;
+    font-weight: 500;
+}
+
+/* Subscription actions container */
+.subscription-actions {
+    margin-top: 1rem;
+}
+
+.btn-manage {
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    border: 1px solid;
+    transition: all 0.2s ease;
+}
+
+.btn-manage.btn-2fa {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    cursor: pointer;
+    position: relative;
+}
+
+.btn-manage.btn-2fa:hover {
+    background: #5a67d8;
+    border-color: #5a67d8;
+    transform: translateY(-1px);
+}
+
+.d-inline {
+    display: inline;
+}
+
+.security-description {
+    color: #718096;
+    font-size: 0.875rem;
+    margin-top: 16px;
+    opacity: 1;
+}
+
+@media (max-width: 640px) {
+    .account-page-wrapper {
+        padding: 1rem;
+    }
+
+    .account-page,
+    .account-container,
+    .security-methods {
+        padding: 1rem;
+    }
+}

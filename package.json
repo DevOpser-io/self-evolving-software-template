@@ -1,0 +1,48 @@
+{
+  "name": "bedrock-express",
+  "version": "1.0.0",
+  "description": "Express.js version of Bedrock AI Chat application with frontend/backend separation",
+  "scripts": {
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:watch": "cd frontend && npm run watch",
+    "frontend:install": "cd frontend && npm install",
+    "backend:start": "cd backend && npm start",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:install": "cd backend && npm install",
+    "install:all": "npm run frontend:install && npm run backend:install",
+    "start": "npm run frontend:build && npm run backend:start",
+    "dev": "npm run frontend:build && npm run backend:dev",
+    "dev:proxy": "npm run frontend:build && node dev-proxy.js",
+    "init-admin-users": "node backend/scripts/init-admin-users.js",
+    "mobile:build": "./build-mobile.sh",
+    "mobile:build:prod": "MOBILE_ENV=production ./build-mobile.sh",
+    "mobile:build:staging": "MOBILE_ENV=staging ./build-mobile.sh",
+    "mobile:sync": "npx cap sync",
+    "mobile:android": "npx cap open android",
+    "mobile:ios": "npx cap open ios",
+    "mobile:run:android": "npx cap run android",
+    "mobile:run:ios": "npx cap run ios"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/app": "^5.0.8",
+    "@capacitor/cli": "^5.7.8",
+    "@capacitor/core": "^5.7.8",
+    "@capacitor/ios": "^5.7.8",
+    "@capacitor/keyboard": "^5.0.9",
+    "@capacitor/network": "^5.0.8",
+    "@capacitor/preferences": "^5.0.8",
+    "@capacitor/splash-screen": "^5.0.8",
+    "dotenv-cli": "^8.0.0",
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.5",
+    "sequelize-cli": "^6.6.3"
+  },
+  "overrides": {
+    "tar": "^7.5.11",
+    "minimatch": "^9.0.7",
+    "brace-expansion": "^2.0.3",
+    "picomatch": "^2.3.2",
+    "@xmldom/xmldom": "^0.8.12"
+  }
+}

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Admin Panel</title>
+    <link href="/static/css/litera-bootstrap.min.css" rel="stylesheet">
+    <link href="/static/fontawesome/all.min.css" rel="stylesheet">
+    <link href="/admin-panel.css" rel="stylesheet">
+    <%- include('../partials/favicon') %>
+</head>
+<body>
+    <!-- Mobile menu toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    
+    <!-- Mobile overlay -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="p-3">
+            <h4 class="text-white">Admin Panel</h4>
+            <hr class="text-white">
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel">
+                    <i class="fa-solid fa-gauge"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/admin-panel/users">
+                    <i class="fa-solid fa-users"></i> Users
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel/conversations">
+                    <i class="fa-solid fa-comments"></i> Conversations
+                </a>
+            </li>
+            <li class="nav-item">
+                <hr class="text-secondary">
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fa-solid fa-house"></i> Back to App
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-access/logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </li>
+        </ul>
+        
+        <!-- User info at bottom -->
+        <div class="position-absolute bottom-0 w-100 p-3 border-top border-secondary">
+            <small class="text-muted">
+                Logged in as:<br>
+                <strong class="text-white"><%= user.email %></strong>
+            </small>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                <div class="d-flex align-items-center mb-2 mb-md-0">
+                    <a href="/admin-panel/users" class="btn btn-outline-secondary btn-sm me-3 d-md-none" title="Back to Users">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <h1 class="h3 mb-0"><%= title %></h1>
+                        <small class="text-muted d-block d-md-none mt-1">Last updated: <span id="last-updated"></span></small>
+                    </div>
+                </div>
+                <div class="d-none d-md-flex align-items-center">
+                    <small class="text-muted">Last updated: <span id="last-updated"></span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Details -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">User Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>User ID:</strong>
+                        <p><code><%= viewedUser.id %></code></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Email:</strong>
+                        <p><%= viewedUser.email %></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Name:</strong>
+                        <p><%= viewedUser.name || 'Not provided' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Created:</strong>
+                        <p><%= new Date(viewedUser.createdAt).toLocaleString() %></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Email Verification:</strong>
+                        <p>
+                            <% if (viewedUser.emailVerified) { %>
+                                <span class="badge bg-success">Verified</span>
+                            <% } else { %>
+                                <span class="badge bg-warning">Unverified</span>
+                            <% } %>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Admin Status:</strong>
+                        <p>
+                            <% if (viewedUser.isAdmin) { %>
+                                <span class="badge bg-danger">Admin</span>
+                            <% } else { %>
+                                <span class="badge bg-secondary">User</span>
+                            <% } %>
+                        </p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>MFA Status:</strong>
+                        <p>
+                            <% if (viewedUser.mfaEnabled) { %>
+                                <span class="badge bg-success">
+                                    <i class="fa-solid fa-shield-check"></i> Enabled
+                                </span>
+                            <% } else { %>
+                                <span class="badge bg-danger">
+                                    <i class="fa-solid fa-shield-xmark"></i> Disabled
+                                </span>
+                            <% } %>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <% if (!viewedUser.emailVerified) { %>
+                        <button data-action="toggle-verified" data-user-id="<%= viewedUser.id %>" class="btn btn-success">
+                            <i class="fa-solid fa-circle-check"></i> Verify Email
+                        </button>
+                    <% } else { %>
+                        <button data-action="toggle-verified" data-user-id="<%= viewedUser.id %>" class="btn btn-warning">
+                            <i class="fa-solid fa-circle-xmark"></i> Unverify Email
+                        </button>
+                    <% } %>
+                    
+                    <% if (viewedUser.id !== user.id) { %>
+                        <% if (!viewedUser.isAdmin) { %>
+                            <button data-action="toggle-admin" data-user-id="<%= viewedUser.id %>" class="btn btn-danger">
+                                <i class="fa-solid fa-shield-plus"></i> Grant Admin Access
+                            </button>
+                        <% } else { %>
+                            <button data-action="toggle-admin" data-user-id="<%= viewedUser.id %>" class="btn btn-outline-danger">
+                                <i class="fa-solid fa-shield-minus"></i> Remove Admin Access
+                            </button>
+                        <% } %>
+                    <% } else { %>
+                        <div class="alert alert-info">
+                            <small><i class="fa-solid fa-circle-info"></i> You cannot modify your own admin status.</small>
+                        </div>
+                    <% } %>
+                    
+                    <a href="/admin-panel/users" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Users
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conversations -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">User Conversations</h5>
+                <span class="badge bg-primary"><%= conversations.length %> conversations</span>
+            </div>
+            <div class="card-body">
+                <% if (conversations.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="d-none d-md-table-cell">Conversation ID</th>
+                                    <th class="d-none d-sm-table-cell">Started</th>
+                                    <th class="d-none d-sm-table-cell">Ended</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% conversations.forEach(conv => { %>
+                                    <tr>
+                                        <td class="d-none d-md-table-cell"><code><%= conv.conversation_id %></code></td>
+                                        <td class="d-none d-sm-table-cell">
+                                            <small class="text-muted">
+                                                <%= new Date(conv.started_at).toLocaleString() %>
+                                            </small>
+                                        </td>
+                                        <td class="d-none d-sm-table-cell">
+                                            <% if (conv.ended_at) { %>
+                                                <small class="text-muted">
+                                                    <%= new Date(conv.ended_at).toLocaleString() %>
+                                                </small>
+                                            <% } else { %>
+                                                <span class="badge bg-success">Active</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <% if (conv.is_temporary) { %>
+                                                <span class="badge bg-warning">Temporary</span>
+                                            <% } else { %>
+                                                <span class="badge bg-primary">Persistent</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted small">View Only</span>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <i class="fa-solid fa-comments text-muted dashboard-icon"></i>
+                        <p class="text-muted mt-2">No conversations found for this user</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div> <!-- End main-content -->
+
+    <!-- Scripts -->
+    <script nonce="<%= cspNonce %>" src="/static/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<%= cspNonce %>">
+        // Update timestamp
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        
+        // Auto-refresh timestamp every minute
+        setInterval(() => {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }, 60000);
+
+        // AJAX helper for admin actions
+        function adminAction(url, method = 'POST', data = {}) {
+            return fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method !== 'GET' ? JSON.stringify(data) : undefined
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Simple refresh for now
+                } else {
+                    alert('Error: ' + (data.message || 'Operation failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
+            });
+        }
+
+        // Event delegation for admin actions
+        document.addEventListener('click', function(e) {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+            
+            const action = button.getAttribute('data-action');
+            const userId = button.getAttribute('data-user-id');
+            
+            switch(action) {
+                case 'toggle-admin':
+                    if (confirm('Are you sure you want to toggle admin status for this user?')) {
+                        adminAction(`/admin-panel/users/${userId}/toggle-admin`);
+                    }
+                    break;
+                    
+                case 'toggle-verified':
+                    if (confirm('Are you sure you want to toggle email verification for this user?')) {
+                        adminAction(`/admin-panel/users/${userId}/toggle-verified`);
+                    }
+                    break;
+            }
+        });
+
+        // Mobile menu functionality
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+        
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('show');
+            mobileOverlay.classList.toggle('show');
+        }
+        
+        function closeMobileMenu() {
+            sidebar.classList.remove('show');
+            mobileOverlay.classList.remove('show');
+        }
+        
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        }
+        
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', closeMobileMenu);
+        }
+        
+        // Close menu when clicking sidebar links on mobile
+        const sidebarLinks = sidebar.querySelectorAll('a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            });
+        });
+        
+        // Close menu on window resize if open
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+    </script>
+</body>
+</html>

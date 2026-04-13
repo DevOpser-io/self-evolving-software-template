@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bedrock Chat (Dev)</title>
+
+    <!-- Mobile Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#2c3e50">
+
+    <!-- Capacitor Core (loaded conditionally for native app) -->
+    <script src="/capacitor-loader.js"></script>
+
+    <!-- Markdown and sanitization libraries (self-hosted for security) -->
+    <script src="/marked.min.js"></script>
+    <script src="/purify.min.js"></script>
+
+    <!-- Mobile API Client -->
+    <script src="/mobile-api-client.js"></script>
+
+    <!-- External Styles -->
+    <link rel="stylesheet" href="/mobile-app.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+
+    <!-- Auth Container -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-logo">💬</div>
+        <h1 class="auth-title">Welcome to Bedrock Chat</h1>
+        <p class="auth-subtitle">Sign in to start chatting with AI</p>
+
+        <!-- Email/Password Login Form -->
+        <form id="loginForm" class="login-form">
+            <input type="email" id="emailInput" name="email" placeholder="Email" required class="auth-input">
+            <input type="password" id="passwordInput" name="password" placeholder="Password" required class="auth-input">
+            <button type="submit" class="auth-button">Sign In</button>
+        </form>
+
+        <div class="auth-links">
+            <a href="#" id="forgotPasswordLink" class="auth-link">Forgot Password?</a>
+        </div>
+
+        <div class="auth-divider">OR</div>
+
+        <!-- Google OAuth Button -->
+        <a href="/auth/google?mobile=true" class="google-signin-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+        </a>
+    </div>
+
+    <!-- MFA Verification Container -->
+    <div class="auth-container hidden" id="mfaContainer">
+        <div class="auth-logo">🔐</div>
+        <h1 class="auth-title">Two-Factor Authentication</h1>
+        <p class="auth-subtitle">Enter the 6-digit code from your authenticator app</p>
+
+        <!-- MFA Verification Form -->
+        <form id="mfaForm" class="login-form">
+            <input type="text" id="mfaCodeInput" name="code" placeholder="000000" required class="auth-input"
+                   inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="one-time-code">
+            <button type="submit" class="auth-button">Verify</button>
+        </form>
+
+        <button type="button" id="mfaCancelBtn" class="auth-button cancel-btn">
+            Cancel
+        </button>
+    </div>
+
+    <!-- Resend Verification Container -->
+    <div class="auth-container hidden" id="resendVerificationContainer">
+        <div class="auth-logo">📧</div>
+        <h1 class="auth-title">Verify Your Email</h1>
+        <p class="auth-subtitle">Please check your email for a verification link</p>
+
+        <!-- Resend Verification Form -->
+        <form id="resendVerificationForm" class="login-form">
+            <input type="email" id="resendEmailInput" name="email" placeholder="Email" required class="auth-input">
+            <button type="submit" class="auth-button">Resend Verification Email</button>
+        </form>
+
+        <button type="button" id="resendCancelBtn" class="auth-button cancel-btn">
+            Back to Login
+        </button>
+    </div>
+
+    <!-- Forgot Password Container -->
+    <div class="auth-container hidden" id="forgotPasswordContainer">
+        <div class="auth-logo">🔑</div>
+        <h1 class="auth-title">Reset Password</h1>
+        <p class="auth-subtitle">Enter your email to receive a password reset link</p>
+
+        <!-- Forgot Password Form -->
+        <form id="forgotPasswordForm" class="login-form">
+            <input type="email" id="forgotEmailInput" name="email" placeholder="Email" required class="auth-input">
+            <button type="submit" class="auth-button">Send Reset Link</button>
+        </form>
+
+        <button type="button" id="forgotCancelBtn" class="auth-button cancel-btn">
+            Back to Login
+        </button>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <div class="app-header">
+            <button class="header-btn" id="menuBtn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <div class="app-title" id="appTitle">Bedrock Chat</div>
+            <button class="header-btn" id="newChatBtn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Chat View -->
+        <div class="app-view active" id="chatView">
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be added here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <button class="icon-btn" id="clearBtn" title="Clear chat">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+                <textarea
+                    class="message-input"
+                    id="messageInput"
+                    placeholder="Type your message..."
+                    rows="1"
+                ></textarea>
+                <button class="icon-btn" id="stopBtn" disabled title="Stop generation">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                    </svg>
+                </button>
+                <button class="send-btn" id="sendBtn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- History View -->
+        <div class="app-view" id="historyView">
+            <div class="history-content">
+                <div class="history-section" id="historyToday">
+                    <h3 class="history-section-title">Today</h3>
+                    <div class="history-list" id="historyTodayList"></div>
+                </div>
+                <div class="history-section" id="historyWeek">
+                    <h3 class="history-section-title">Previous 7 Days</h3>
+                    <div class="history-list" id="historyWeekList"></div>
+                </div>
+                <div class="history-section" id="historyMonth">
+                    <h3 class="history-section-title">Previous 30 Days</h3>
+                    <div class="history-list" id="historyMonthList"></div>
+                </div>
+                <div class="empty-history hidden" id="emptyHistory">
+                    <div class="empty-state-icon">💬</div>
+                    <div class="empty-state-title">No conversation history</div>
+                    <div class="empty-state-subtitle">Start chatting to create your first conversation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account View -->
+        <div class="app-view" id="accountView">
+            <div class="account-content">
+                <div class="account-header">
+                    <div class="account-avatar" id="accountAvatar">U</div>
+                    <h2 class="account-name" id="accountName">User</h2>
+                    <p class="account-email" id="accountEmail"></p>
+                </div>
+
+                <div class="account-sections">
+                    <div class="account-card">
+                        <h3>Account Information</h3>
+                        <div class="account-info-item">
+                            <span class="info-label">Email:</span>
+                            <span class="info-value" id="infoEmail">-</span>
+                        </div>
+                        <div class="account-info-item">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value" id="infoName">-</span>
+                        </div>
+                        <div class="account-info-item">
+                            <span class="info-label">Account Created:</span>
+                            <span class="info-value" id="infoCreated">-</span>
+                        </div>
+                    </div>
+
+                    <div class="account-card">
+                        <h3>Security</h3>
+                        <div class="account-info-item">
+                            <span class="info-label">Two-Factor Authentication:</span>
+                            <span class="info-value" id="mfaStatus">-</span>
+                        </div>
+                        <p class="security-description">
+                            Two-factor authentication adds an extra layer of security to your account by requiring a code from your phone in addition to your password.
+                        </p>
+                        <button class="account-btn hidden" id="enableMfaBtn">
+                            Enable Two-Factor Authentication
+                        </button>
+                        <button class="account-btn danger hidden" id="disableMfaBtn">
+                            Disable Two-Factor Authentication
+                        </button>
+                    </div>
+
+                    <div class="account-card">
+                        <h3>Settings</h3>
+                        <button class="account-btn danger" id="accountLogoutBtn">
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <a href="#" class="nav-item active" data-view="chatView">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                </svg>
+                <small>Chat</small>
+            </a>
+            <a href="#" class="nav-item" data-view="historyView">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+                <small>History</small>
+            </a>
+            <a href="#" class="nav-item" data-view="accountView">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <small>Account</small>
+            </a>
+        </div>
+
+        <!-- Side Menu (kept for backward compatibility) -->
+        <div class="side-menu" id="sideMenu">
+            <div class="menu-header">
+                <div class="menu-title">Conversations</div>
+                <button class="close-menu" id="closeMenu">×</button>
+            </div>
+            <div class="conversation-list" id="conversationList">
+                <!-- Conversation items will be added here -->
+            </div>
+            <div class="menu-footer">
+                <button id="logoutBtn">
+                    Sign Out
+                </button>
+            </div>
+        </div>
+        <div class="menu-overlay" id="menuOverlay"></div>
+    </div>
+
+    <!-- Mobile Chat Client -->
+    <script src="/mobile-app.js?v=20251015-1931"></script>
+</body>
+</html>

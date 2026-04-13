@@ -1,0 +1,36 @@
+<!-- single collapse container -->
+<div class="collapse navbar-collapse" id="navbarNav">
+  <ul class="navbar-nav ms-auto align-items-lg-center">
+    <!-- desktop only: hidden under lg -->
+    <li class="nav-item d-none d-lg-block">
+      <a class="nav-link" href="/chat">Chat</a>
+    </li>
+    <% if (user && user.isAdmin) { %>
+    <li class="nav-item d-none d-lg-block">
+      <a class="nav-link" href="/admin-panel">Admin</a>
+    </li>
+    <% } %>
+    <li class="nav-item d-none d-lg-block">
+      <a class="nav-link" href="/account">Account</a>
+    </li>
+    <li class="nav-item d-none d-lg-block">
+      <a class="nav-link" href="/auth/logout">Sign Out</a>
+    </li>
+    
+    <!-- mobile only: shown under lg -->
+    <li class="nav-item d-lg-none">
+      <a class="nav-link" href="/chat">Chat</a>
+    </li>
+    <% if (user && user.isAdmin) { %>
+    <li class="nav-item d-lg-none">
+      <a class="nav-link" href="/admin-panel">Admin</a>
+    </li>
+    <% } %>
+    <li class="nav-item d-lg-none">
+      <a class="nav-link" href="/account">Account</a>
+    </li>
+    <li class="nav-item d-lg-none">
+      <a class="nav-link" href="/auth/logout">Sign Out</a>
+    </li>
+  </ul>
+</div>

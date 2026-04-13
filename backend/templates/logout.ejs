@@ -1,0 +1,24 @@
+<% title = 'Logout' %>
+<link rel="stylesheet" href="/static/auth.css">
+
+<div class="auth-form-container">
+  <h2>Sign Out</h2>
+  
+  <p>Click the button below to sign out of your account.</p>
+  
+  <form method="POST" action="/auth/logout" class="auth-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit" class="auth-button">Sign Out</button>
+  </form>
+  
+  <div class="auth-links">
+    <a href="/chat">Cancel and return to chat</a>
+  </div>
+</div>
+
+<script nonce="<%= cspNonce %>">
+  // Auto-submit the form after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('form').submit();
+  });
+</script>

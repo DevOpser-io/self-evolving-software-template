@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "__IOS_TEAM_ID__.__IOS_BUNDLE_ID__",
+        "paths": [
+          "/mobile/auth*",
+          "/mobile/auth/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["__IOS_TEAM_ID__.__IOS_BUNDLE_ID__"]
+  }
+}

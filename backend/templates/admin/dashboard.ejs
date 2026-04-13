@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Admin Panel</title>
+    <link href="/static/css/litera-bootstrap.min.css" rel="stylesheet">
+    <link href="/static/fontawesome/all.min.css" rel="stylesheet">
+    <link href="/admin-panel.css" rel="stylesheet">
+    <%- include('../partials/favicon') %>
+</head>
+<body>
+    <!-- Mobile menu toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    
+    <!-- Mobile overlay -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="p-3">
+            <h4 class="text-white">Admin Panel</h4>
+            <hr class="text-white">
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="/admin-panel">
+                    <i class="fa-solid fa-gauge"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel/users">
+                    <i class="fa-solid fa-users"></i> Users
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel/conversations">
+                    <i class="fa-solid fa-comments"></i> Conversations
+                </a>
+            </li>
+            <li class="nav-item">
+                <hr class="text-secondary">
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fa-solid fa-house"></i> Back to App
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-access/logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </li>
+        </ul>
+        
+        <!-- User info at bottom -->
+        <div class="position-absolute bottom-0 w-100 p-3 border-top border-secondary">
+            <small class="text-muted">
+                Logged in as:<br>
+                <strong class="text-white"><%= user.email %></strong>
+            </small>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0"><%= title %></h1>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">System Online</span>
+                    <small class="text-muted">Last updated: <span id="last-updated"></span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3><%= stats.userCount %></h3>
+            <p class="mb-0">Total Users</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3><%= stats.adminCount %></h3>
+            <p class="mb-0">Admin Users</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3><%= stats.verifiedUserCount %></h3>
+            <p class="mb-0">Verified Users</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3><%= stats.conversationCount %></h3>
+            <p class="mb-0">Conversations</p>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Users -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Users</h5>
+                <a href="/admin-panel/users" class="btn btn-sm btn-outline-primary">View All Users</a>
+            </div>
+            <div class="card-body">
+                <% if (recentUsers.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th class="d-none d-md-table-cell">Name</th>
+                                    <th class="d-none d-sm-table-cell">Created</th>
+                                    <th class="d-none d-sm-table-cell">Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% recentUsers.forEach(user => { %>
+                                    <tr>
+                                        <td>
+                                            <a href="/admin-panel/users/<%= user.id %>" class="text-decoration-none">
+                                                <%= user.email %>
+                                            </a>
+                                        </td>
+                                        <td class="d-none d-md-table-cell"><%= user.name || 'N/A' %></td>
+                                        <td class="d-none d-sm-table-cell">
+                                            <small class="text-muted">
+                                                <%= new Date(user.createdAt).toLocaleDateString() %>
+                                            </small>
+                                        </td>
+                                        <td class="d-none d-sm-table-cell">
+                                            <% if (user.isAdmin) { %>
+                                                <span class="badge bg-danger">Admin</span>
+                                            <% } %>
+                                            <% if (user.emailVerified) { %>
+                                                <span class="badge bg-success">Verified</span>
+                                            <% } else { %>
+                                                <span class="badge bg-warning">Unverified</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="/admin-panel/users/<%= user.id %>" class="btn btn-outline-primary">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                                <% if (!user.emailVerified) { %>
+                                                    <button data-action="toggle-verified" data-user-id="<%= user.id %>" class="btn btn-outline-success" title="Verify Email">
+                                                        <i class="fa-solid fa-circle-check"></i>
+                                                    </button>
+                                                <% } %>
+                                                <% if (!user.isAdmin && user.id !== user.id) { %>
+                                                    <button data-action="toggle-admin" data-user-id="<%= user.id %>" class="btn btn-outline-danger" title="Grant Admin">
+                                                        <i class="fa-solid fa-shield-check"></i>
+                                                    </button>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <i class="fa-solid fa-users text-muted dashboard-icon"></i>
+                        <p class="text-muted mt-2">No users found</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <a href="/admin-panel/users" class="btn btn-primary">
+                                <i class="fa-solid fa-users"></i> Manage Users
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <a href="/admin-panel/conversations" class="btn btn-info">
+                                <i class="fa-solid fa-comments"></i> View Conversations
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <a href="/" class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-house"></i> Back to App
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div> <!-- End main-content -->
+
+    <!-- Scripts -->
+    <script nonce="<%= cspNonce %>" src="/static/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<%= cspNonce %>">
+        // Update timestamp
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        
+        // Auto-refresh timestamp every minute
+        setInterval(() => {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }, 60000);
+
+        // AJAX helper for admin actions
+        function adminAction(url, method = 'POST', data = {}) {
+            return fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method !== 'GET' ? JSON.stringify(data) : undefined
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Simple refresh for now
+                } else {
+                    alert('Error: ' + (data.message || 'Operation failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
+            });
+        }
+
+        // Event delegation for admin actions
+        document.addEventListener('click', function(e) {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+            
+            const action = button.getAttribute('data-action');
+            const userId = button.getAttribute('data-user-id');
+            const conversationId = button.getAttribute('data-conversation-id');
+            
+            switch(action) {
+                case 'toggle-admin':
+                    if (confirm('Are you sure you want to toggle admin status for this user?')) {
+                        adminAction(`/admin-panel/users/${userId}/toggle-admin`);
+                    }
+                    break;
+                    
+                case 'toggle-verified':
+                    if (confirm('Are you sure you want to toggle email verification for this user?')) {
+                        adminAction(`/admin-panel/users/${userId}/toggle-verified`);
+                    }
+                    break;
+                    
+                case 'delete-conversation':
+                    if (confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                        adminAction(`/admin-panel/conversations/${conversationId}`, 'DELETE');
+                    }
+                    break;
+            }
+        });
+
+        // Mobile menu functionality
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+        
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('show');
+            mobileOverlay.classList.toggle('show');
+        }
+        
+        function closeMobileMenu() {
+            sidebar.classList.remove('show');
+            mobileOverlay.classList.remove('show');
+        }
+        
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        }
+        
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', closeMobileMenu);
+        }
+        
+        // Close menu when clicking sidebar links on mobile
+        const sidebarLinks = sidebar.querySelectorAll('a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            });
+        });
+        
+        // Close menu on window resize if open
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Admin Panel</title>
+    <link href="/static/css/litera-bootstrap.min.css" rel="stylesheet">
+    <link href="/static/fontawesome/all.min.css" rel="stylesheet">
+    <link href="/admin-panel.css" rel="stylesheet">
+    <%- include('../partials/favicon') %>
+</head>
+<body>
+    <!-- Mobile menu toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    
+    <!-- Mobile overlay -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="p-3">
+            <h4 class="text-white">Admin Panel</h4>
+            <hr class="text-white">
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel">
+                    <i class="fa-solid fa-gauge"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="/admin-panel/users">
+                    <i class="fa-solid fa-users"></i> Users
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-panel/conversations">
+                    <i class="fa-solid fa-comments"></i> Conversations
+                </a>
+            </li>
+            <li class="nav-item">
+                <hr class="text-secondary">
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="fa-solid fa-house"></i> Back to App
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin-access/logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </li>
+        </ul>
+        
+        <!-- User info at bottom -->
+        <div class="position-absolute bottom-0 w-100 p-3 border-top border-secondary">
+            <small class="text-muted">
+                Logged in as:<br>
+                <strong class="text-white"><%= user.email %></strong>
+            </small>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-start">
+                    <a href="/admin-panel/users" class="btn btn-outline-secondary btn-sm me-3 d-md-none align-self-start" title="Back to Users">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <h1 class="h3 mb-0"><%= title %></h1>
+                        <nav aria-label="breadcrumb" class="d-none d-md-block">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/admin-panel">Dashboard</a></li>
+                                <li class="breadcrumb-item"><a href="/admin-panel/users">Users</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Create User</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <small class="text-muted">Last updated: <span id="last-updated"></span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create User Form -->
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Create New User</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Flash Messages -->
+                        <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+                            <div class="alert alert-danger" role="alert">
+                                <i class="fa-solid fa-triangle-exclamation"></i> <%= Array.isArray(error) ? error[0] : error %>
+                            </div>
+                        <% } %>
+                        
+                        <% if (typeof message !== 'undefined' && message && message.length > 0) { %>
+                            <div class="alert alert-success" role="alert">
+                                <i class="fa-solid fa-circle-check"></i> <%= Array.isArray(message) ? message[0] : message %>
+                            </div>
+                        <% } %>
+
+                        <form action="/admin-panel/users/create" method="POST">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="email" name="email" required 
+                                           placeholder="user@example.com">
+                                    <div class="form-text">The user will receive a verification email</div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           placeholder="John Doe">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="password" name="password" required 
+                                           minlength="8" placeholder="Minimum 8 characters">
+                                    <div class="form-text">Password must be at least 8 characters long</div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="confirmPassword" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required 
+                                           minlength="8" placeholder="Confirm password">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="isAdmin" name="isAdmin">
+                                        <label class="form-check-label" for="isAdmin">
+                                            <strong>Grant Admin Access</strong>
+                                        </label>
+                                        <div class="form-text">User will have full admin privileges</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="emailVerified" name="emailVerified" checked>
+                                        <label class="form-check-label" for="emailVerified">
+                                            Mark Email as Verified
+                                        </label>
+                                        <div class="form-text">Skip email verification step</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="/admin-panel/users" class="btn btn-outline-secondary">
+                                    <i class="fa-solid fa-arrow-left"></i> Back to Users
+                                </a>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fa-solid fa-circle-plus"></i> Create User
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script nonce="<%= cspNonce %>" src="/static/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<%= cspNonce %>">
+        // Update timestamp
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        
+        // Auto-refresh timestamp every minute
+        setInterval(() => {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }, 60000);
+
+        // Password confirmation validation
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+            
+            if (password !== confirmPassword) {
+                this.setCustomValidity('Passwords do not match');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+        
+        // Also check when password field changes
+        document.getElementById('password').addEventListener('input', function() {
+            const confirmPassword = document.getElementById('confirmPassword');
+            if (confirmPassword.value) {
+                confirmPassword.dispatchEvent(new Event('input'));
+            }
+        });
+
+        // Mobile menu functionality
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+        
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('show');
+            mobileOverlay.classList.toggle('show');
+        }
+        
+        function closeMobileMenu() {
+            sidebar.classList.remove('show');
+            mobileOverlay.classList.remove('show');
+        }
+        
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        }
+        
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', closeMobileMenu);
+        }
+        
+        // Close menu when clicking sidebar links on mobile
+        const sidebarLinks = sidebar.querySelectorAll('a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            });
+        });
+        
+        // Close menu on window resize if open
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+    </script>
+</body>
+</html>

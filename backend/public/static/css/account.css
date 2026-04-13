@@ -1,0 +1,424 @@
+/* Account Page Styles */
+
+.account-page-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.account-page {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.account-container {
+  padding: 2rem;
+}
+
+.account-container h2 {
+  margin-bottom: 2rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.settings-section {
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.settings-section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.account-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #6c757d;
+  min-width: 100px;
+}
+
+.info-value {
+  color: #333;
+}
+
+.oauth-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.oauth-badge.google {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
+.oauth-icon {
+  margin-right: 4px;
+}
+
+/* Security Section */
+.security-info {
+  margin-bottom: 1rem;
+}
+
+.security-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.security-description {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-top: 1rem;
+}
+
+.subscription-actions {
+  margin: 1rem 0;
+}
+
+.btn-manage {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-2fa {
+  background: #0d6efd;
+  color: #fff;
+}
+
+.btn-2fa:hover {
+  background: #0b5ed7;
+  color: #fff;
+}
+
+/* Subscription Info */
+.subscription-info {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.subscription-info p {
+  margin: 0;
+  color: #6c757d;
+}
+
+/* ============================================
+   DANGER ZONE
+   ============================================ */
+
+.danger-zone {
+  margin-top: 3rem;
+  border: 2px solid #dc3545;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.danger-zone-header {
+  background: #dc3545;
+  color: #fff;
+  padding: 1rem 1.5rem;
+}
+
+.danger-zone-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.danger-zone-content {
+  padding: 1.5rem;
+  background: #fff9f9;
+}
+
+.danger-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 0;
+  border-bottom: 1px solid #f5c2c7;
+}
+
+.danger-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.danger-item:first-child {
+  padding-top: 0;
+}
+
+.danger-item-info {
+  flex: 1;
+  padding-right: 2rem;
+}
+
+.danger-item-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.danger-item-info p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6c757d;
+  line-height: 1.5;
+}
+
+.danger-item-info ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.danger-item-info li {
+  margin-bottom: 0.25rem;
+}
+
+.btn-danger-action {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dc3545;
+  background: #fff;
+  color: #dc3545;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-danger-action:hover {
+  background: #dc3545;
+  color: #fff;
+}
+
+.btn-danger-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Delete Account Modal */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.modal-backdrop.show {
+  display: flex;
+}
+
+.delete-modal {
+  background-color: #ffffff;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 10000;
+}
+
+.delete-modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #ffffff;
+  border-radius: 8px 8px 0 0;
+}
+
+.delete-modal-header h3 {
+  margin: 0;
+  color: #dc3545;
+  font-size: 1.25rem;
+}
+
+.delete-modal-body {
+  padding: 1.5rem;
+  background-color: #ffffff;
+}
+
+.delete-modal-body p {
+  margin-bottom: 1rem;
+  color: #333;
+  line-height: 1.6;
+}
+
+.delete-modal-body .warning-text {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #856404;
+}
+
+.delete-modal-body label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #333;
+}
+
+.delete-modal-body input[type="text"] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.delete-modal-body input[type="text"]:focus {
+  outline: none;
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+}
+
+.delete-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  background: #fff;
+  color: #333;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: #f8f9fa;
+}
+
+.btn-delete-confirm {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: #dc3545;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-confirm:hover {
+  background: #c82333;
+}
+
+.btn-delete-confirm:disabled {
+  background: #e4606d;
+  cursor: not-allowed;
+}
+
+/* AWS Account Status */
+.aws-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.aws-status.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.aws-status.pending,
+.aws-status.creating {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.aws-status.failed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.aws-status.none {
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .account-page-wrapper {
+    padding: 1rem;
+  }
+
+  .account-container {
+    padding: 1.5rem;
+  }
+
+  .danger-item {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .danger-item-info {
+    padding-right: 0;
+  }
+
+  .btn-danger-action {
+    width: 100%;
+    text-align: center;
+  }
+}

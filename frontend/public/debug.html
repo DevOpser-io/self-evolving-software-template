@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Page</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('status').textContent = 'JavaScript is working!';
+            
+            // Test loading the bundle.js file
+            const script = document.createElement('script');
+            script.src = '/static/dist/bundle.js';
+            script.onload = function() {
+                document.getElementById('bundle-status').textContent = 'Bundle.js loaded successfully';
+            };
+            script.onerror = function() {
+                document.getElementById('bundle-status').textContent = 'Failed to load bundle.js';
+            };
+            document.head.appendChild(script);
+            
+            // Add timestamp to prevent caching
+            document.getElementById('timestamp').textContent = new Date().toISOString();
+        });
+    </script>
+</head>
+<body>
+    <h1>Debug Page</h1>
+    <p>JavaScript status: <span id="status">Not working</span></p>
+    <p>Bundle.js status: <span id="bundle-status">Checking...</span></p>
+    <p>Timestamp: <span id="timestamp"></span></p>
+    <p><a href="/chat">Go to Chat Page</a></p>
+</body>
+</html>

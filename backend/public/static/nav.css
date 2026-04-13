@@ -1,0 +1,163 @@
+/* nav.css */
+:root {
+  --header-height: 60px;
+  --header-height-mobile: 56px;
+  --button-size: 40px;
+  --spacing: 1rem;
+  --blur-background: #fff;
+  --primary-color: #ED166C;
+  --gray-50: #f8f9fa;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-700: #374151;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --sidebar-width: 250px;
+  --input-container-height: 88px;
+  --background-color: #f5f5f5;
+}
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: var(--header-height-mobile);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: white;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 40;
+    box-shadow: var(--shadow-md);
+  }
+
+  .sidebar.active {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding-top: var(--header-height-mobile);
+  }
+
+  .message-input-container {
+    left: 0;
+    width: 100%;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .sidebar.active ~ .main-content .message-input-container {
+    display: none;
+  }
+
+  .sidebar:not(.active) ~ .main-content .message-input-container {
+    display: block;
+  }
+  
+  /* Ensure navbar-toggler is visible and properly styled on mobile */
+  .navbar-toggler {
+    display: block !important;
+    padding: 0.25rem 0.75rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.375rem;
+    margin-right: 0.5rem;
+    transition: border-color 0.15s ease-in-out;
+  }
+  
+  .navbar-toggler:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .navbar-toggler:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+  }
+  
+  .navbar-toggler-icon {
+    display: inline-block;
+    width: 1.5em;
+    height: 1.5em;
+    vertical-align: middle;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100%;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.6%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+  }
+}
+
+/* Desktop styles */
+@media screen and (min-width: 769px) {
+  .sidebar {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: white;
+    transform: none;
+    box-shadow: var(--shadow-sm);
+    border-right: 1px solid var(--gray-200);
+  }
+
+  .main-content {
+    margin-left: var(--sidebar-width);
+  }
+
+  .message-input-container {
+    left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+  }
+
+  .sidebar .nav-links {
+    display: none;
+  }
+  
+  /* Hide navbar-toggler on desktop only */
+  .navbar-toggler {
+    display: none !important;
+  }
+}
+
+/* Sidebar navigation styles */
+.sidebar-nav {
+  margin-top: auto;
+  padding: 1rem 0;
+}
+
+.sidebar-divider {
+  margin: 0.5rem 0;
+  border-top: 1px solid var(--gray-200);
+}
+
+.sidebar-nav .nav-item {
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-nav .nav-link {
+  padding: 0.75rem 1rem;
+  color: var(--gray-700);
+  font-weight: 500;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+}
+
+.sidebar-nav .nav-link:hover {
+  background-color: var(--gray-100);
+}
+
+.sidebar-nav .nav-link.active {
+  background-color: var(--gray-100);
+  color: var(--primary-color);
+}

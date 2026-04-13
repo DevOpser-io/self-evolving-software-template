@@ -1,0 +1,22 @@
+<% title = 'Sign Up' %>
+<link rel="stylesheet" href="/static/css/auth.css">
+<%- include('./partials/favicon') %>
+
+<div class="auth-form-container">
+  <h2>Create an Account</h2>
+
+  <div class="redirect-note">
+    <p>We use passwordless authentication for improved security.</p>
+    <p>Simply enter your email on the login page and we'll send you a verification code.</p>
+  </div>
+
+  <a href="/auth/login" class="auth-button signup-continue-btn">
+    Continue to Sign In
+  </a>
+
+  <div class="auth-links">
+    Already have an account? <a href="/auth/login">Login</a>
+  </div>
+</div>
+
+<script src="/static/js/auth.js"></script>

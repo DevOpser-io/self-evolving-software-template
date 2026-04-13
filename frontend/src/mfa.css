@@ -1,0 +1,969 @@
+/* Base styles */
+:root {
+    --primary-color: #3b82f6;
+    --primary-dark: #2563eb;
+    --primary-color-rgb: 59, 130, 246;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* MFA Container Layout */
+.mfa-app {
+    min-height: 100vh;
+    background: #f9fafb;
+    position: relative;
+    display: block;
+    overflow-y: auto;
+}
+
+.mfa-verify-page,
+.mfa-setup-page {
+    min-height: 100%;
+    padding: 2rem 1rem;
+    overflow: visible;
+    display: block;
+    background: #f9fafb;
+}
+
+.mfa-container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 1rem 2rem;
+}
+
+.mfa-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    height: auto;
+    overflow: visible;
+}
+
+/* QR Code specific styles - overriding all previous styles */
+.qr-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    margin: 1rem auto;
+    width: fit-content;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.qr-image {
+    margin: 0 auto;
+    padding: 0.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.qr-image svg {
+    display: block;
+    margin: auto;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+    .mfa-verify-page,
+    .mfa-setup-page {
+        padding: 1rem 0.75rem;
+        min-height: 100%;
+    }
+
+    .mfa-container {
+        padding: 0 0.75rem 1.5rem;
+    }
+
+    .mfa-card {
+        margin: 0;
+        border-radius: 8px;
+    }
+
+    .qr-container {
+        padding: 0.75rem;
+    }
+
+    .qr-image {
+        padding: 0.5rem;
+    }
+
+    .secret-key {
+        font-size: 0.8125rem;
+        padding: 0.875rem;
+    }
+}
+
+/* iOS height fixes */
+@supports (-webkit-touch-callout: none) {
+    html, body {
+        height: -webkit-fill-available;
+    }
+    
+    .mfa-app {
+        min-height: -webkit-fill-available;
+    }
+}
+
+/* Landscape orientation optimizations */
+@media (max-width: 640px) and (orientation: landscape) {
+    .mfa-verify-page,
+    .mfa-setup-page {
+        padding: 0.5rem;
+        min-height: 100%;
+    }
+
+    .mfa-container {
+        padding: 0.5rem;
+    }
+
+    .method-options {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .qr-container {
+        margin: 1rem auto;
+    }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .qr-image svg {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .flash,
+    .method-card,
+    .submit-button,
+    .send-code-btn {
+        transition: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .verification-input::placeholder {
+        color: rgba(156, 163, 175, 0.8);
+    }
+}
+
+/* Toggle button and secret key styling */
+.toggle-key-btn {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #374151;
+    width: auto;
+    display: inline-block;
+}
+
+.secret-key {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f3f4f6;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.875rem;
+    word-break: break-all;
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Form Elements */
+.verification-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.verification-input {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1.25rem;
+    letter-spacing: 0.25rem;
+    text-align: center;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    appearance: none;
+}
+
+.verification-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+/* Buttons */
+.submit-button,
+.auth-button {
+    width: 100%;
+    padding: 0.875rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    touch-action: manipulation;
+}
+
+.submit-button:hover,
+.auth-button:hover {
+    background: var(--primary-dark);
+}
+
+.submit-button:disabled,
+.auth-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #9ca3af;
+}
+
+/* Status Messages */
+.status-message {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.status-message-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #34d399;
+}
+
+.status-message-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+}
+
+/* Flash Messages */
+.flashes {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.flash {
+    padding: 1rem;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: auto;
+    margin-bottom: 0.5rem;
+}
+
+.flash.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+}
+
+.flash.success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #34d399;
+}
+
+.flash.info {
+    background-color: #e0f2fe;
+    color: #075985;
+    border: 1px solid #38bdf8;
+}
+
+.close-button {
+    background: transparent;
+    border: none;
+    color: currentColor;
+    padding: 0.25rem;
+    margin-left: 1rem;
+    cursor: pointer;
+    font-size: 1.25rem;
+    line-height: 1;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.close-button:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Tabbed Interface Styles */
+.mfa-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1px;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    min-width: 0;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.tab-button .tab-icon {
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
+.tab-button:hover {
+    color: var(--primary-color);
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active,
+.tab-content[aria-hidden="false"] {
+    display: block;
+}
+
+/* Mobile Specific Styles */
+@media (max-width: 640px) {
+    .mfa-tabs {
+        flex-direction: row;
+        gap: 0.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        overflow-x: auto;
+        padding-bottom: 0;
+        padding: 0 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .tab-button {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        white-space: normal;
+    }
+
+    .tab-button.active {
+        background-color: var(--primary-lighter);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        border-bottom-width: 1px;
+    }
+    
+    .tab-button .tab-icon {
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+    .mfa-tabs {
+        padding: 0 0.25rem;
+    }
+
+    .tab-button {
+        padding: 0.625rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .tab-button .tab-icon {
+        font-size: 1.125rem;
+        margin-right: 0.5rem;
+    }
+}
+
+/* Container adjustments for mobile */
+@media (max-width: 640px) {
+    .auth-form-container {
+        margin: 1rem auto;
+        padding: 1.5rem;
+    }
+
+    .mfa-container {
+        padding: 0 0.75rem;
+    }
+}
+
+/* Progress Steps */
+.progress-bar {
+    margin: 1.5rem 0;
+}
+
+.steps {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    position: relative;
+}
+
+.steps::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    right: 25%;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 1;
+}
+
+.step {
+    background: white;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 2px solid #e5e7eb;
+    position: relative;
+    z-index: 2;
+    font-weight: 500;
+    color: #6b7280;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.step.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Method Selection */
+.method-options {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.method-card {
+    position: relative;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: block;
+}
+
+.method-card:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-lighter);
+}
+
+.method-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.method-card input[type="radio"]:checked + .method-content {
+    color: var(--primary-color);
+}
+
+.method-card input[type="radio"]:checked + .method-content .method-icon {
+    background: var(--primary-lighter);
+    color: var(--primary-color);
+}
+
+.method-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    pointer-events: none;
+}
+
+.method-icon {
+    font-size: 1.5rem;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.method-details {
+    flex: 1;
+}
+
+.method-details strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    color: #111827;
+}
+
+.method-description {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* MFA Methods Section Styles */
+.security-section-title {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: #374151;
+    font-weight: 600;
+}
+
+.mfa-methods-container {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+.mfa-method-item {
+    background-color: white;
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+}
+
+.mfa-method-item:last-child {
+    margin-bottom: 0;
+}
+
+.method-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.method-name {
+    font-weight: 500;
+    color: #111827;
+}
+
+.status-badge {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 500;
+}
+
+.status-badge.enabled {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.method-description {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.email-verification-section,
+.backup-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.email-info {
+    text-align: center;
+}
+
+.email-info p {
+    margin-bottom: 1rem;
+    color: #374151;
+}
+
+.send-code-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    background-color: #4b5563;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.send-code-btn:hover {
+    background-color: #374151;
+}
+
+.send-code-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.timer {
+    display: inline-block;
+    margin-left: 0.75rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.auth-button.secondary {
+    background-color: #4b5563;
+    color: white;
+}
+
+.auth-button.secondary:hover {
+    background-color: #374151;
+}
+
+.auth-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.auth-form-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form-container h2 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: #111827;
+    font-size: 1.875rem;
+    font-weight: 600;
+}
+
+.auth-form-container h3 {
+    font-size: 1.25rem;
+    margin: 1rem 0;
+    text-align: center;
+    color: #374151;
+    font-weight: 500;
+}
+
+.auth-form {
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.auth-button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.auth-button.login,
+.auth-button.signup {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.auth-button:hover {
+    opacity: 0.9;
+}
+
+.text-center {
+    text-align: center;
+    color: #4b5563;
+    margin-bottom: 1.5rem;
+}
+
+.email-verification-section,
+.backup-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.email-info {
+    text-align: center;
+}
+
+.email-info p {
+    margin-bottom: 1rem;
+    color: #374151;
+}
+
+.send-code-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    background-color: #4b5563;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.send-code-btn:hover {
+    background-color: #374151;
+}
+
+.send-code-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.timer {
+    display: inline-block;
+    margin-left: 0.75rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.setup-section {
+    display: none;
+    margin-top: 2rem;
+}
+
+.setup-section.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.progress-bar {
+    margin: 2.5rem 0;
+    padding: 0 1.5rem;
+}
+
+.steps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    padding: 0;
+    margin: 0;
+}
+
+.steps::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 1;
+}
+
+.step {
+    background: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    border: 2px solid #e5e7eb;
+    position: relative;
+    z-index: 2;
+    font-weight: 500;
+    color: #6b7280;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.step.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: white;
+}
+
+.method-selection-group {
+    display: grid;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.method-card {
+    position: relative;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: block;
+}
+
+.method-card:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-lighter);
+}
+
+.method-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.method-card input[type="radio"]:checked + .method-content {
+    color: var(--primary-color);
+}
+
+.method-card input[type="radio"]:checked + .method-content .method-icon {
+    background: var(--primary-lighter);
+    color: var(--primary-color);
+}
+
+.method-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    pointer-events: none;
+}
+
+.method-icon {
+    font-size: 1.5rem;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.method-details {
+    flex: 1;
+}
+
+.method-details strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    color: #111827;
+}
+
+.method-description {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0;
+}

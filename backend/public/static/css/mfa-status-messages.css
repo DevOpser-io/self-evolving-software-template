@@ -1,0 +1,76 @@
+/* MFA Status Messages - CSP compliant styles */
+
+/* Button loading states */
+.btn-loading-state {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spinner animation */
+@keyframes mfa-spinner-rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.mfa-spinner {
+  animation: mfa-spinner-rotate 1s linear infinite;
+  margin-right: 8px;
+}
+
+/* Flash messages for MFA status */
+.flash.mfa-success {
+  background: #d4edda;
+  color: #155724;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.flash.mfa-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+/* Loading hint visibility */
+.loading-hint.visible {
+  display: block !important;
+}
+
+.loading-hint.hidden {
+  display: none !important;
+}
+
+/* Button loading span - initially hidden */
+.btn-loading {
+  display: none;
+}
+
+.btn-loading.visible {
+  display: inline !important;
+}
+
+.btn-loading.hidden {
+  display: none !important;
+}
+
+/* Loading hint - initially hidden */
+.loading-hint {
+  display: none;
+  text-align: center;
+  color: #666;
+  font-size: 0.9em;
+  margin-top: 10px;
+}
+
+.loading-hint.visible {
+  display: block !important;
+}
+
+.loading-hint.hidden {
+  display: none !important;
+}
