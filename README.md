@@ -314,6 +314,15 @@ Out of the box, the template ships with a working stack that most SaaS apps need
 - **Website builder** — a chat-driven, template-backed site editor with preview and a `Publish` button that hooks into a deploy-target stub. Keep it if you're building a website-builder SaaS, or repurpose the builder UI for whatever your product actually does.
 - **Lead capture** — a simple form-to-DB flow attached to published sites.
 
+**Two chat surfaces (important — they're different code paths):**
+
+- **`/` — stateless preview chat.** Anonymous, public, single-turn. Visitors type a prompt, the backend calls the LLM once, no history, no `conversationId`, no Redis writes. Designed as a "try before you sign up" hook that converts into a real account on the first authenticated action. Lives in `backend/templates/landing-builder.ejs` + `backend/public/static/js/landing-builder.js`.
+- **`/chat` — stateful conversational app.** Authenticated (login + MFA), persistent, multi-turn. Every message pulls the full thread for the active `conversationId` from Redis, appends, sends the whole history to the LLM, streams the response, writes back. Supports listing past conversations, loading a specific one, and resetting. Lives in `backend/templates/chat.ejs` + `backend/controllers/chatController.js`.
+
+If you're extending the "real product chat," edit `/chat`. If you're extending the landing/signup funnel, edit `/`. They don't share code. [`AGENTS.md`](AGENTS.md) has the full breakdown with file paths and a decision flowchart.
+
+**Route visibility defaults to private.** There's a global auth middleware in `backend/server.js` around line 409 that redirects unauthenticated browser requests to `/auth/login` and returns `401` to unauthenticated AJAX requests. Any new route you want anonymous users to reach must be added to the `publicPaths` array in that same file — the list is the single source of truth for "what's public." Details in [`AGENTS.md`](AGENTS.md) → "Public vs authenticated routes."
+
 **Intentionally left blank (the self-evolving part):**
 
 - **Deployment target** — no bundled CI, no cloud-specific IAC. You (and your AI agent) pick the target (Lightsail / Cloud Run / Fly / ECS / K8s / VPS / …), generate the IAC, and wire it into `backend/routes/sites.js → triggerDeployment()`. See [`AGENTS.md`](AGENTS.md).

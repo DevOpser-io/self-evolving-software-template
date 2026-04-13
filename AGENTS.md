@@ -99,6 +99,158 @@ This is the **main blank-slate extension point** and where you'll spend the most
 
 ---
 
+## The two chat surfaces (understand before editing)
+
+The template ships **two distinct chat UI paths** that look similar but serve very different purposes. Figure out which one you want to touch before you start editing — they live in different files and have different auth, persistence, and backend contracts.
+
+### `/` — Landing page, stateless preview
+
+| | |
+|---|---|
+| **Route** | `backend/routes/index.js:13` |
+| **Template** | `backend/templates/landing-builder.ejs` |
+| **Frontend JS** | `backend/public/static/js/landing-builder.js` |
+| **Auth** | None — public, anonymous visitors can use it |
+| **Persistence** | None — nothing is stored server-side |
+| **Backend call** | `POST /api/preview/generate` (anonymous) |
+| **Shape** | Single-turn. Visitor types a prompt, backend calls the LLM once, renders the result inline |
+
+Purpose: the **"try before you sign up"** hook. A visitor lands on `/`, types something into the chat input, gets a single LLM-generated preview, and is prompted to sign up if they want to save/publish it. On sign-up, the original prompt is converted into a real `Site` row via `POST /api/sites` and they're redirected into `/sites/:id/builder` (the authenticated builder UI).
+
+There's no `conversationId`, no Redis entry, no message history — every prompt is a fresh one-shot call. Intentionally cheap so anonymous traffic doesn't inflate your Redis bill or force you to deal with abuse on a persisted data store.
+
+### `/chat` — Full conversational app, stateful
+
+| | |
+|---|---|
+| **Route** | `backend/routes/chat.js:24` |
+| **Template** | `backend/templates/chat.ejs` |
+| **Controller** | `backend/controllers/chatController.js` |
+| **Auth** | `ensureFullAuth` — must be logged in **and** MFA-verified |
+| **Persistence** | Full thread history in Redis, keyed by `conversationId` (see `backend/services/redisService.js`) |
+| **Backend call path** | `POST /api/chat/message` → `POST/GET /api/chat/stream` (SSE) |
+| **History endpoints** | `GET /conversation_history`, `GET /get_conversation/:id`, `POST /reset` |
+| **Shape** | Multi-turn. Every request pulls the whole thread for the active `conversationId`, appends the new message, sends the full history to the LLM, streams the response back, writes the updated history back |
+
+Purpose: the **"real product"** chat — a proper conversational AI app with memory. Every turn rebuilds the full context from Redis so the model can reason across the whole thread. Supports listing past conversations, loading a specific one, and resetting.
+
+This is what you ship to paying users. It's the surface where you plug in per-user tools, RAG, function calling, custom system prompts, conversation branching, etc.
+
+### Which one to modify
+
+- **Building a landing page / lead funnel / "try before you buy" flow** → edit `/` and `landing-builder.js`. Cheap. No DB schema, no auth concerns, no Redis bookkeeping. If you want the single-turn call to go through the LLM facade instead of `/api/preview/generate`, route it through `llm.generateResponse()` directly.
+- **Building a user-facing chat product** (support desk, coding assistant, tutor, therapist, analyst, whatever) → edit `/chat` and `chatController.js`. Replace the system prompt, plug in your tools, restyle the `chat.ejs` template. The streaming pipeline and conversation storage already work; don't rebuild them.
+- **Building a SaaS that isn't chat-centric at all** (CRM, project tracker, analytics dashboard, …) → you can delete both chat surfaces and `backend/services/llm/` entirely. The auth, admin, email, database, mobile-shell, and session infrastructure all stand on their own — the app is still a valid authenticated Express starter without any LLM code.
+
+### Common mistake
+
+Don't edit `landing-builder.js` thinking you're improving the main chat app — the main chat app lives in `chat.ejs` and `chatController.js`, and they don't share code with the landing page. If you change the system prompt on `/`, it only affects anonymous preview calls.
+
+---
+
+## Public vs authenticated routes (important — read before adding endpoints)
+
+The template uses a **default-deny** auth model: if a new route you add isn't explicitly listed as public, any unauthenticated request to it will be redirected away from it before your handler ever runs. People bolt on a new endpoint, curl it, get a redirect, and spend twenty minutes debugging the wrong thing. Don't be that.
+
+### How it works
+
+`backend/server.js` has a global authentication middleware (around line 409) that runs on every request. It checks the request path against a `publicPaths` array (around line 411). If the request matches a public path, the middleware calls `next()` and the handler runs normally. Otherwise:
+
+1. **AJAX / JSON request** (`req.xhr`, or `Accept: application/json`) → returns `401 { error: 'Authentication required' }`.
+2. **Regular browser request** → saves the original URL into `req.session.returnTo` and redirects to `/auth/login`. After successful login, the auth flow sends the user back to `returnTo` (falling back to `/sites` if nothing was saved).
+
+Effectively: **any route you add that you want anonymous users to reach must be added to `publicPaths` explicitly**. This is intentional — it makes "is this endpoint public?" a grep-able, single-file question instead of a scattered audit across route files.
+
+### The public path list
+
+As of the initial commit, `publicPaths` in `backend/server.js` contains:
+
+```js
+const publicPaths = [
+  '/',                    // Landing page (anonymous preview chat)
+  '/mobile-builder.html', // Mobile builder (same as landing)
+  '/mobile-app.html',     // Legacy mobile app
+  '/auth/login',
+  '/auth/signup',
+  '/auth/verify-email',
+  '/auth/resend-verification',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/magic-link',     // Magic link authentication
+  '/auth/mfa-verify',     // MFA verification (during login flow)
+  '/auth/mfa-setup',
+  '/auth/mfa-backup-codes',
+  '/auth/send-mfa-code',
+  '/auth/google',
+  '/auth/google/callback',
+  '/mobile/auth',
+  '/static',
+  '/favicon.ico',
+  '/health',
+  '/api',                 // API info endpoints
+  '/api/health',
+  '/admin-panel',
+];
+```
+
+Matching is prefix-based: a request path matches if it equals a listed path exactly **or** starts with `<listed>/`. So `/static` covers `/static/js/bundle.js`, `/api` covers `/api/info`, and so on.
+
+### How to add a new public route
+
+When you add a new route that anonymous users should reach, do both of these — neither alone is enough:
+
+1. **Define the route** in the relevant router file (`backend/routes/*.js`) as normal. Don't add `ensureAuthenticated` middleware to it.
+2. **Add its path prefix to the `publicPaths` array** in `backend/server.js`.
+
+Example: you're adding a public `/pricing` page and a `/api/stats/public` JSON endpoint.
+
+```js
+// backend/server.js → publicPaths
+const publicPaths = [
+  '/',
+  // ... existing entries ...
+  '/pricing',              // ← add this
+  '/api/stats/public',     // ← and this
+];
+```
+
+```js
+// backend/routes/index.js (or a new router)
+router.get('/pricing', (req, res) => {
+  res.render('pricing', { user: req.user || null });
+});
+```
+
+Test with `curl -i http://localhost:8000/pricing` — if you see a `302` to `/auth/login`, the `publicPaths` entry is missing or doesn't match the path prefix correctly.
+
+### How to protect a route that should require auth
+
+Don't do anything. Just mount it normally outside of `publicPaths`. The global middleware will handle the redirect for browsers and the `401` for API clients automatically. You don't need to sprinkle `ensureAuthenticated` on every handler — it's already enforced at the middleware layer.
+
+If you additionally need the user to have completed MFA (not just be logged in), use `ensureFullAuth` from `backend/middleware/authMiddleware.js` on the specific route. That's how `/chat`, `/account`, and the admin panel are gated.
+
+### How to require MFA on a new route
+
+```js
+const { ensureFullAuth } = require('../middleware/authMiddleware');
+
+router.get('/sensitive', ensureFullAuth, (req, res) => {
+  // Only reached by logged-in users who have verified MFA this session
+});
+```
+
+`ensureFullAuth` also redirects unauthenticated users to `/auth/login` and MFA-incomplete users to `/auth/mfa-verify`, both with `returnTo` preserved.
+
+### Rules of thumb
+
+- **Default to private.** Leave new routes out of `publicPaths` unless there's a concrete reason they need anonymous access.
+- **Never expose write endpoints publicly** (POST/PUT/PATCH/DELETE). The template has `/api/leads` and `/api/preview/generate` as intentional public POSTs; every other write endpoint should require auth.
+- **Be prefix-precise.** `/api` is public in the default list, which means `/api/health` and `/api/info` are public, **but so is every new `/api/foo` you add unless you think about it**. If you're adding authenticated API endpoints, gate them with `ensureFullAuth` on the route itself, or nest them under a non-public prefix.
+- **AJAX routes still need to be on the list.** The 401-vs-redirect branch is *after* the `publicPaths` check — if you forget to list your public XHR endpoint, callers will get a 401 JSON error instead of a clean response.
+- **Don't grep the route files to figure out what's public.** Grep `publicPaths` in `backend/server.js`. That's the single source of truth.
+
+---
+
 ## Adding a deployment target
 
 The `Publish` button in the website builder currently hits a stub that marks every deployment as `not_configured`. Your job when a human asks for "deploy this to X" is to:
