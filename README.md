@@ -126,6 +126,8 @@ AWS_SECRET_ACCESS_KEY=your-secret-key
 ```
 
 > In the AWS Console, go to **Bedrock → Model access** and request access to Claude Sonnet. Approval is usually instant. Your IAM principal needs `bedrock:InvokeModel` *and* `bedrock:InvokeModelWithResponseStream`. Bedrock is only available in certain regions (`us-east-1`, `us-west-2`, etc.) — `REGION` must be one of them.
+>
+> **You're hitting your own AWS account.** The backend uses the default AWS credential chain (env vars, `~/.aws/credentials`, EC2 instance role, ECS task role), so whichever identity you've already configured locally is the one that makes the Bedrock calls. No cross-account assume, no platform-account middleman — just your credentials, directly to Bedrock in your own account. If you later port this to a multi-tenant platform (e.g. [app.devopser.io](https://app.devopser.io)) where a platform account needs to call Bedrock in a customer account, set `CUSTOMER_CROSS_ACCOUNT_ROLE_ARN` in the environment and the same code path will AssumeRole into that account automatically. See `.env.example` for the var.
 
 **Option B — OpenAI (GPT-4o, GPT-4o-mini, etc.):**
 
