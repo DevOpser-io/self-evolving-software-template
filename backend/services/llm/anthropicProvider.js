@@ -5,20 +5,33 @@
  *
  * Required env: ANTHROPIC_API_KEY
  * Optional env: ANTHROPIC_MODEL (default: claude-sonnet-4-5-20250929)
+ *
+ * The Anthropic client is constructed lazily on the first chat request so the
+ * server can boot with an unconfigured key (e.g. right after `./scripts/setup.sh`
+ * but before the user has filled in `.env`). The friendly error surfaces on
+ * first use instead of at module load.
  */
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('../../config');
 
 function create() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error('LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY to be set');
-  }
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
   const defaultSystemPrompt = config.chat.systemPrompt;
   const maxTokens = config.bedrock.maxTokens;
   const temperature = config.bedrock.temperature;
+
+  let cachedClient = null;
+  function getClient() {
+    if (cachedClient) return cachedClient;
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error(
+        'LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY to be set in .env. ' +
+        'Get a key at https://console.anthropic.com/settings/keys and restart the server.'
+      );
+    }
+    cachedClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    return cachedClient;
+  }
 
   function toAnthropic(messages) {
     let system = defaultSystemPrompt;
@@ -42,7 +55,7 @@ function create() {
   return {
     async generateResponse(messages) {
       const { system, messages: msgs } = toAnthropic(messages);
-      const response = await client.messages.create({
+      const response = await getClient().messages.create({
         model,
         system,
         messages: msgs,
@@ -55,7 +68,7 @@ function create() {
 
     async *streamResponse(messages) {
       const { system, messages: msgs } = toAnthropic(messages);
-      const stream = await client.messages.create({
+      const stream = await getClient().messages.create({
         model,
         system,
         messages: msgs,

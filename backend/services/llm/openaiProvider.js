@@ -5,23 +5,36 @@
  * Required env: OPENAI_API_KEY
  * Optional env: OPENAI_MODEL (default: gpt-4o-mini),
  *               OPENAI_BASE_URL (override for Azure OpenAI, local vLLM, etc.)
+ *
+ * The OpenAI client is constructed lazily on the first chat request so the
+ * server can boot with an unconfigured key (e.g. right after `./scripts/setup.sh`
+ * but before the user has filled in `.env`). The friendly error surfaces on
+ * first use instead of at module load.
  */
 const OpenAI = require('openai');
 const config = require('../../config');
 
 function create() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('LLM_PROVIDER=openai requires OPENAI_API_KEY to be set');
-  }
-
-  const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    baseURL: process.env.OPENAI_BASE_URL || undefined,
-  });
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const defaultSystemPrompt = config.chat.systemPrompt;
   const maxTokens = config.bedrock.maxTokens;
   const temperature = config.bedrock.temperature;
+
+  let cachedClient = null;
+  function getClient() {
+    if (cachedClient) return cachedClient;
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error(
+        'LLM_PROVIDER=openai requires OPENAI_API_KEY to be set in .env. ' +
+        'Get a key at https://platform.openai.com/api-keys and restart the server.'
+      );
+    }
+    cachedClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.OPENAI_BASE_URL || undefined,
+    });
+    return cachedClient;
+  }
 
   function toOpenAI(messages) {
     const hasSystem = messages.some((m) => m.role === 'system');
@@ -40,7 +53,7 @@ function create() {
 
   return {
     async generateResponse(messages) {
-      const response = await client.chat.completions.create({
+      const response = await getClient().chat.completions.create({
         model,
         messages: toOpenAI(messages),
         max_tokens: maxTokens,
@@ -50,7 +63,7 @@ function create() {
     },
 
     async *streamResponse(messages) {
-      const stream = await client.chat.completions.create({
+      const stream = await getClient().chat.completions.create({
         model,
         messages: toOpenAI(messages),
         max_tokens: maxTokens,

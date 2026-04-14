@@ -4,6 +4,10 @@ npm-debug.log
 yarn-debug.log
 yarn-error.log
 
+# Local npm cache (used by scripts/setup.sh to sidestep system-level
+# ownership issues in ~/.npm without needing sudo).
+.npm-cache/
+
 # Environment variables
 .env*
 !.env.example

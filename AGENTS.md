@@ -14,6 +14,108 @@ Treat this file as your playbook. When asked to "deploy", "publish", "set up hos
 
 ---
 
+## Quick setup (for AI agents)
+
+When the human says **"set this up for me"**, **"get it running"**, **"install this"**, or anything similar, follow this exact sequence. Do not skip the credential question — the chat UI will not work without one of the three LLM providers configured.
+
+### 1. Bootstrap
+
+```bash
+./scripts/setup.sh
+```
+
+This is idempotent. It checks Node 20+ / Docker, creates `.env` from `.env.example`, starts Postgres + Redis via `docker compose`, installs all npm dependencies, runs migrations, and seeds the default admin user (`admin@example.com` / `adminpass`).
+
+If it fails on a prerequisite, relay the error to the user verbatim — it's designed to give them the exact command to fix it (e.g. `brew install node@20`, `open -a Docker`).
+
+If it fails on port conflicts (`bind: address already in use`), re-run with overrides:
+
+```bash
+POSTGRES_PORT=5433 REDIS_PORT=6380 ./scripts/setup.sh
+```
+
+and remember to mirror those ports in `.env` (`POSTGRES_PORT`, `REDIS_URL`) for the `npm run dev` path.
+
+### 2. Ask the user for LLM credentials
+
+The server will boot without them (the providers are lazy-initialized), but the chat UI will throw on first use. Ask **once**:
+
+> Which LLM provider do you want to use?
+> - **OpenAI** — simplest, just needs `OPENAI_API_KEY` (get one at https://platform.openai.com/api-keys)
+> - **Anthropic (direct Claude API)** — needs `ANTHROPIC_API_KEY` (https://console.anthropic.com/settings/keys)
+> - **AWS Bedrock** — needs AWS creds with `bedrock:InvokeModel` permission in a Bedrock-enabled region (us-east-1, us-west-2, etc.)
+
+Update `.env` accordingly:
+
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+```
+
+or
+
+```env
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+or (Bedrock)
+
+```env
+LLM_PROVIDER=bedrock
+REGION=us-east-1
+BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+```
+
+**Bedrock + MFA-protected IAM identity** (very common at real companies): the default profile's long-term keys will hit an explicit-deny from a `requireMFA`-style policy. Have the user export an MFA session into the shell **before** starting the server:
+
+```bash
+eval "$(AWS_PROFILE=<their-mfa-profile> aws configure export-credentials --format env)"
+```
+
+These are temporary credentials — they expire (typically 1–12h). When the user reports "chat stopped working with `security token invalid`", re-run the export and restart the server. Do NOT write these keys into `.env` — they'd go stale.
+
+**Known gotcha:** Node AWS SDK v3 cannot always read profiles defined in `~/.aws/config` (as opposed to `~/.aws/credentials`). Prefer the `aws configure export-credentials` path over `AWS_PROFILE=...`.
+
+### 3. Start the app
+
+Two paths — ask the user which they want, or pick `npm run dev` by default for fastest iteration:
+
+**Hot-reload dev server (fastest feedback loop):**
+```bash
+npm run dev
+```
+
+**Fully containerized (closer to prod):**
+```bash
+docker compose --profile app up -d --build
+docker logs -f sest-app   # to watch startup
+```
+
+The containerized path runs Sequelize migrations automatically on container start. Either path puts the app on **http://localhost:8000**. Sign in with `admin@example.com` / `adminpass` (change immediately).
+
+### 4. Verify
+
+Before reporting success, actually hit the server:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8000/auth/login
+# expect: 200
+```
+
+Do not report "setup complete" until the curl returns 200 **and** you've checked the server logs for a `Server running on http://localhost:8000` line (plus, if using Bedrock, a `Current AWS Identity:` line showing the expected account).
+
+### 5. What's deliberately left for later
+
+After the app is running, the human will usually want one or more of:
+
+- **Their actual product** — ask what they're building, then reshape routes/models/UI (see the extension points section below)
+- **A deployment target** — pick one and wire it into `backend/routes/sites.js → triggerDeployment()` (see the deployment section)
+- **Billing** — Stripe / Paddle / usage metering
+- **Real email** — fill in `MAIL_*` in `.env` with Gmail app password or SES config
+
+---
+
 ## Repo map
 
 ```

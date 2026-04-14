@@ -1,0 +1,95 @@
+# Local-dev docker-compose for the Self-Evolving Software Template.
+#
+# Two ways to use this file:
+#
+#   1. Data services only (you run the app with `npm run dev`):
+#        docker compose up -d
+#
+#   2. Everything containerized (app + data):
+#        docker compose --profile app up -d --build
+#
+# Port conflicts (e.g. another Redis or Postgres on your host) — override
+# without editing this file:
+#
+#        POSTGRES_PORT=5433 REDIS_PORT=6380 docker compose up -d
+#
+# The app container reaches postgres/redis via the compose network, so the
+# exposed host ports only matter for your host-side tools (psql, redis-cli,
+# `npm run dev`, etc.).
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: sest-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-devdb}
+      POSTGRES_USER: ${POSTGRES_USER:-devuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - sest_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devuser} -d ${POSTGRES_DB:-devdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: sest-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    # Only starts when you pass `--profile app`. Leaves `docker compose up` as
+    # a lightweight "data services only" path for the `npm run dev` workflow.
+    profiles: ["app"]
+    build:
+      context: .
+    container_name: sest-app
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    # `.env` is optional — if you have one it's loaded, if not the variables
+    # below (plus any passed via `-e` / `export`) are enough for a boot.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-devdb}
+      POSTGRES_USER: ${POSTGRES_USER:-devuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      REDIS_URL: redis://redis:6379
+      # Pass AWS credentials from your shell if you're using Bedrock. Empty
+      # strings are fine — the Node SDK will fall through to ~/.aws/credentials
+      # inside the container (note: only works if you mount ~/.aws, which this
+      # file does not by default — usually you export the session keys first):
+      #   eval "$(aws configure export-credentials --format env --profile <p>)"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "[entrypoint] running sequelize migrations..."
+        cd /app/backend && npx sequelize-cli db:migrate
+        echo "[entrypoint] starting server..."
+        exec node server.js
+
+volumes:
+  sest_pgdata:

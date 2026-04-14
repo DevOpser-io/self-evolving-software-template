@@ -4,3 +4,13 @@ node_modules
 *.jks
 *.keystore
 *.p12
+
+# Secrets — never bake these into the image. Pass at runtime via -e or
+# docker-compose env_file instead.
+.env
+.env.*
+!.env.example
+
+# Local caches
+.npm-cache
+.DS_Store

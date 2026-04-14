@@ -9,6 +9,47 @@ A full-stack **SaaS starter template** — Express.js + Postgres + Redis with AI
 
 ---
 
+## Fast path — one command
+
+If you have **Node 20+** and **Docker** installed, the fastest way to stand up a working local copy is:
+
+```bash
+git clone https://github.com/DevOpser-io/self-evolving-software-template.git
+cd self-evolving-software-template
+./scripts/setup.sh
+```
+
+This script checks prerequisites, creates `.env` from `.env.example`, starts PostgreSQL + Redis in Docker, installs all dependencies, runs migrations, and seeds the default admin user. When it finishes, set your LLM credentials in `.env` (OpenAI, Anthropic, or Bedrock — see [step 4 below](#4-configure-environment-variables)) and run either:
+
+```bash
+npm run dev                                 # hot-reload dev server
+docker compose --profile app up -d --build  # fully containerized
+```
+
+Then open **http://localhost:8000** and sign in with `admin@example.com` / `adminpass`.
+
+### Have an AI coding agent do it for you
+
+After cloning the repo, open it in Claude Code / Cursor / Aider / Copilot Workspace / your favorite agent and paste this prompt:
+
+> **Set this repo up for me locally.**
+>
+> 1. Read `AGENTS.md`, especially the **"Quick setup for AI agents"** section at the top — it's the authoritative playbook for this task.
+> 2. Run `./scripts/setup.sh` and relay any prerequisite errors verbatim (Node version, Docker, port conflicts, etc.).
+> 3. Ask me **once** which LLM provider to configure — OpenAI, Anthropic, or AWS Bedrock — and for the matching credentials. Don't guess, don't pick a default. If I pick Bedrock and I'm on an MFA-protected IAM identity, follow the `aws configure export-credentials` pattern documented in `AGENTS.md`.
+> 4. Write the credentials into `.env` (never commit `.env` — it's gitignored).
+> 5. Start the app. Ask me whether I want `npm run dev` (hot-reload) or `docker compose --profile app up -d --build` (fully containerized).
+> 6. Verify with `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8000/auth/login` that it returns `200`, and check the server logs for `Server running on http://localhost:8000`. Do not report success until both are true.
+> 7. Tell me the URL, the admin credentials (`admin@example.com` / `adminpass`), and anything that failed or was skipped.
+
+The agent should be able to take you from a fresh clone to a running UI at http://localhost:8000 in 3–5 minutes of mostly unattended work, pausing only to ask for credentials.
+
+> **MFA-protected Bedrock credentials expire.** If you come back the next day and the chat starts failing with `security token invalid`, the fix is to re-export your MFA session and restart the app — see the [AGENTS.md](AGENTS.md#quick-setup-for-ai-agents) section for the one-liner.
+
+If you'd rather install PostgreSQL/Redis on the host (no Docker), or you hit an issue with the script, follow the manual [Quick Start](#quick-start-local-development) below.
+
+---
+
 ## Prerequisites
 
 Before you start, make sure you have:
