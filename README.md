@@ -44,6 +44,78 @@ After cloning the repo, open it in Claude Code / Cursor / Aider / Copilot Worksp
 
 The agent should be able to take you from a fresh clone to a running UI at http://localhost:8000 in 3–5 minutes of mostly unattended work, pausing only to ask for credentials.
 
+#### Opinionated variant (Bedrock, nothing to decide)
+
+If you already know you want AWS Bedrock and you don't want the agent to ask you anything, paste this instead. It pre-commits every decision, spells out the pre-flight checks, and defines "done" as four verifiable checks — not "the process booted."
+
+> Clone https://github.com/DevOpser-io/self-evolving-software-template into
+> ~/workspace-breakdown/ and get it serving at http://localhost:8000. I want to
+> be able to open a browser to http://localhost:8000/auth/login, sign in as
+> admin@example.com / adminpass, and hit the chat UI with Bedrock responding.
+> That is the definition of done — do not report success until I can do that.
+>
+> Follow AGENTS.md (especially "Quick setup for AI agents") as the playbook.
+>
+> Non-negotiables — do not ask me, these are already decided:
+>
+> - LLM provider: AWS Bedrock
+> - Region: us-east-1
+> - Model: us.anthropic.claude-sonnet-4-5-20250929-v1:0
+> - AWS credentials: use whatever I already have set up in my local AWS CLI.
+>   Run `aws sts get-caller-identity` first to confirm a working identity —
+>   if that succeeds, resolve credentials via
+>   `aws configure export-credentials --format env` and export them into the
+>   shell that runs the server. If my default profile needs MFA or a specific
+>   named profile, detect that and use `AWS_PROFILE=<name>` with the same
+>   export-credentials call — do not invent a profile name, read it from
+>   `~/.aws/config` or ask me which one to use. Never write AWS keys to .env.
+> - Run mode: `npm run dev` (host-side, hot-reload, against dockerized pg+redis).
+>   Start it in the background so you can keep working.
+> - Port: 8000. If anything else is already bound to 8000, tell me which process
+>   and stop — do not silently pick a different port.
+> - Email: leave disabled. The Gmail SMTP init-failure log line on boot is
+>   expected. Do NOT ask me to configure email.
+> - Admin: use the seeded admin@example.com / adminpass as-is.
+>
+> Pre-flight before running setup.sh:
+>
+> - Check ownership of ~/.npm/_cacache. If any subdir is root-owned (from an
+>   old `sudo npm install`), redirect this session's cache:
+>     `npm config set cache ~/.npm-user-cache`
+>   Do not sudo-chown ~/.npm without asking me first.
+> - Check `lsof -iTCP:8000 -sTCP:LISTEN` and `lsof -iTCP:5432 -sTCP:LISTEN`
+>   and `lsof -iTCP:6379 -sTCP:LISTEN`. If any are occupied by something
+>   that isn't a prior sest-* container, stop and tell me — don't clobber.
+> - Run `aws sts get-caller-identity` to confirm my local AWS CLI is working
+>   before you touch anything else. If it fails, stop and show me the error —
+>   don't guess at credentials or edit my `~/.aws/` files.
+>
+> Steps:
+>
+> 1. ./scripts/setup.sh  (relay any prerequisite errors verbatim)
+> 2. Edit .env to set LLM_PROVIDER=bedrock, REGION=us-east-1,
+>    BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+> 3. `eval "$(aws configure export-credentials --format env)"` (prepend
+>    `AWS_PROFILE=<name>` if my setup requires a named profile), then
+>    `npm run dev` in the same shell, backgrounded.
+>
+> Verify ALL FOUR before reporting success:
+>
+>   a. `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8000/auth/login`
+>      returns 200
+>   b. `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8000/health`
+>      returns 200
+>   c. Server logs contain `Server running on http://localhost:8000`
+>   d. Server logs contain `Current AWS Identity: arn:aws:iam::...:user/...`
+>      (this proves Bedrock will actually work — not just that the process booted)
+>
+> Report (under 200 words): the URL, admin creds, the resolved AWS identity ARN,
+> the background task ID for the dev server, the `docker ps` line for
+> sest-postgres and sest-redis, and anything that was skipped or failed.
+>
+> If ANY of (a)(b)(c)(d) is false, do not say "done" — say what's wrong and what
+> you tried. Silence on a failure is worse than a verbose failure.
+
 > **MFA-protected Bedrock credentials expire.** If you come back the next day and the chat starts failing with `security token invalid`, the fix is to re-export your MFA session and restart the app — see the [AGENTS.md](AGENTS.md#quick-setup-for-ai-agents) section for the one-liner.
 
 If you'd rather install PostgreSQL/Redis on the host (no Docker), or you hit an issue with the script, follow the manual [Quick Start](#quick-start-local-development) below.
