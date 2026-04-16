@@ -54,9 +54,24 @@ case 'mistral':
 
 ## The Converse API caveat
 
-`backend/services/websiteAgentServiceV2.js` is the experimental tool-calling website builder. It uses **Bedrock's Converse API directly** for tool-use fidelity and is explicitly Bedrock-only. If the user is non-Bedrock:
+`backend/services/websiteAgentServiceV2.js` is the tool-calling website builder. It uses **Bedrock's Converse API directly** for tool-use fidelity and is explicitly Bedrock-only. Today it is the **only** path wired into `backend/routes/sites.js` and `backend/routes/preview.js` — both files import directly from V2 with no branching on `LLM_PROVIDER`.
 
-- They automatically fall back to `websiteAgentService.js` (the facade-based path), which works with all providers.
+What this means in practice:
+
+- The chat-message paths (`/api/chat/message`, `/api/chat/stream`, `/` preview turn-taking after the builder is gone) flow through the `backend/services/llm/` facade and work on any provider you register.
+- The **website-builder** paths (the `/` preview's site generation and `/sites/*` edit-with-chat) currently require `LLM_PROVIDER=bedrock`. A non-Bedrock user who hits `POST /api/preview/generate` or the builder chat will get a runtime failure from V2, not a graceful fallback.
+- `backend/services/websiteAgentService.js` (v1) is facade-based and provider-agnostic, but **nothing imports it** in the current commit. If you want OpenAI / Anthropic / your new provider to drive the builder, you must swap the two imports manually:
+
+  ```js
+  // backend/routes/sites.js   — change:
+  const { processWithTools, generateSiteFromDescription } = require('../services/websiteAgentServiceV2');
+  // to (for non-Bedrock):
+  const { generateSiteFromDescription } = require('../services/websiteAgentService');
+  // and drop processWithTools calls — v1 has no tool-use equivalent.
+
+  // backend/routes/preview.js — same swap on its single import.
+  ```
+
 - Don't try to port V2 to OpenAI / Anthropic / your new provider by hand — the tool-use protocols differ enough that a faithful port is its own project. If the user wants tool calling on their provider, talk about it first.
 
 ## Testing the new provider
@@ -71,9 +86,9 @@ MISTRAL_MODEL=...
 
 Restart `npm run dev`. Smoke checks:
 
-1. `/` landing preview chat: type a prompt, confirm a single-turn response renders.
-2. `/chat` (after login): send three turns, confirm each turn replays the full thread (you should see the model reference earlier turns).
-3. The server log should not contain any `[LLM]` or `[Chat]` warnings about missing provider registration.
+1. `/chat` (after login): send three turns, confirm each turn replays the full thread (you should see the model reference earlier turns). This path uses the facade and is the core smoke test for a new provider.
+2. The server log should not contain any `[LLM]` or `[Chat]` warnings about missing provider registration.
+3. The `/` landing page's **website-builder** chat will still try to call Bedrock's Converse API (see "Converse API caveat" above) — a non-Bedrock provider can't drive the builder without swapping `routes/sites.js` and `routes/preview.js` to the v1 service. If the user isn't building a builder product, this is fine to ignore; if they are, surface it honestly before reporting "done".
 
 ## Verification gate
 
@@ -82,8 +97,8 @@ Before reporting the fourth provider wired up:
 - [ ] A single new file `backend/services/llm/<name>Provider.js` exists and implements both methods.
 - [ ] `backend/services/llm/index.js` registers the new name in its switch.
 - [ ] `.env.example` and `README.md` step 4 document the env vars.
-- [ ] `chatController.js` and `websiteAgentService.js` are unchanged (`git diff` is clean on them).
-- [ ] Both smoke checks above pass.
-- [ ] If the user is non-Bedrock, the builder UI falls back to `websiteAgentService.js` and tool-use features that require V2 are surfaced to them honestly.
+- [ ] `chatController.js` is unchanged (`git diff` is clean). `websiteAgentService.js` is unchanged **unless** the user explicitly asked you to re-wire the builder paths away from V2.
+- [ ] Smoke checks 1 and 2 above pass.
+- [ ] If the user wants the builder UI to work on their non-Bedrock provider, you've either manually swapped `routes/sites.js` + `routes/preview.js` to `websiteAgentService.js` with their agreement, **or** you've told them plainly that the builder is Bedrock-only today and let them decide.
 
 If any is false, do not report success.

@@ -18,7 +18,7 @@ Modeled on the four-check gate from the README's **"Opinionated variant (Bedrock
 curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8000/auth/login
 ```
 
-Expect: `200`. Anything else (including `302` to a hosted identity provider) → the server is up but the login template is broken; stop and investigate.
+Expect: `200` on an unmodified template. A `302` is acceptable **only** if the user has deliberately swapped the built-in login for an external SSO / hosted identity provider — in that case, confirm with them and follow the redirect to the real login URL. On a stock clone, anything other than `200` means the login template is broken; stop and investigate.
 
 ### (b) `/health` returns 200
 

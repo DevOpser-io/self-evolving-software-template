@@ -28,15 +28,24 @@ Only invoke this rule if the user is explicitly building multi-tenant managed ho
 
 ## Wiring into the template
 
-The integration point is `backend/services/bedrockService.js` (for Bedrock calls) and [`./target-selection.md`](./target-selection.md) step 2 (for deploys). Both check `CUSTOMER_CROSS_ACCOUNT_ROLE_ARN` from the **customer row**, not from a global env var, when operating on behalf of a customer. Use an env var only when there's exactly one cross-account target (e.g. you run a single shared services account).
+The integration point is `backend/services/bedrockService.js` (for Bedrock calls) and [`./target-selection.md`](./target-selection.md) step 2 (for deploys).
 
-Lookup order inside the request handler:
+**How it works today (single-tenant / shared-services shape):**
 
-1. Load the customer row.
-2. Read `customers.cross_account_role_arn` and `customers.external_id`.
-3. AssumeRole with those + a per-request session name (include the user's ID and a short purpose string; it shows up in CloudTrail).
-4. Build the AWS SDK client with the returned temporary credentials.
-5. Use the client. Let the credentials expire — do not cache across customers.
+- `backend/config/index.js` reads `CUSTOMER_CROSS_ACCOUNT_ROLE_ARN` from the **global env var** and exposes it as `config.aws.customerCrossAccountRoleArn`.
+- `bedrockService.js` constructor and `websiteAgentServiceV2.js` both take that one ARN. If it's set, they AssumeRole before every Bedrock call; if it's empty, they use the default credential chain.
+- This means the current code supports **exactly one** cross-account target per deploy — fine for a single shared-services account, insufficient for true per-customer accounts.
+- The `users` table already has `aws_account_id` and `aws_external_id` columns (`backend/migrations/20250112000001-add-aws-account-fields.js`), so the per-user plumbing is partly in place but **not yet read by the Bedrock path**.
+
+**What a real multi-tenant (per-customer AWS account) build needs to add:**
+
+1. Load the acting user / customer row.
+2. Read `user.aws_account_id` and `user.aws_external_id` (or add a dedicated `customers` table if you want to separate "tenant" from "user").
+3. AssumeRole with the role ARN you derive from those + a per-request session name that includes the user's ID and a short purpose string (it shows up in CloudTrail).
+4. Build a **per-request** AWS SDK client with the returned temporary credentials. Do not reuse the shared `bedrockService` singleton for tenant-scoped calls — its credentials are whatever the last request assumed.
+5. Use the client. Let the credentials expire. Do not cache across customers.
+
+Until you wire that, treat `CUSTOMER_CROSS_ACCOUNT_ROLE_ARN` as a single-target knob and say so to the user.
 
 ## Things the platform code must NOT do
 
@@ -49,11 +58,13 @@ Lookup order inside the request handler:
 
 Before enabling cross-account in production:
 
-- [ ] The customer row has `cross_account_role_arn` and `external_id` populated.
-- [ ] The trust role exists in the customer account with the scoped policy the platform actually needs.
+- [ ] For the single-target shape: `CUSTOMER_CROSS_ACCOUNT_ROLE_ARN` is set **in the server's env** (via Secrets Manager in prod — see [`./secrets-manager.md`](./secrets-manager.md)), not hardcoded.
+- [ ] For the per-customer shape: each tenant row (`users` or your new `customers` table) has the role ARN and external ID populated.
+- [ ] The trust role exists in the target AWS account with the scoped policy the platform actually needs.
 - [ ] The trust policy has an `sts:ExternalId` condition matching the stored external ID.
 - [ ] `AssumeRole` from the platform principal succeeds and returns creds.
-- [ ] On a forced AssumeRole failure, the request returns an error — it does **not** silently run as the platform identity.
+- [ ] On a forced AssumeRole failure, the request returns an error — it does **not** silently fall back to the default credential chain in the platform account.
 - [ ] No log line contains the raw session token or the external ID.
+- [ ] If you added per-customer AssumeRole, the shared `bedrockService` singleton is **not** reused across tenants — each tenant request builds its own client.
 
 If any is false, do not enable the flow for real customer traffic.

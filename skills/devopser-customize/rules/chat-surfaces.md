@@ -16,7 +16,7 @@
 | **Template** | `backend/templates/landing-builder.ejs` | `backend/templates/chat.ejs` |
 | **Frontend JS** | `backend/public/static/js/landing-builder.js` | — (server-rendered + `chat.ejs` scripts) |
 | **Controller** | — (inline in the route handler) | `backend/controllers/chatController.js` |
-| **Auth** | None — public, anonymous | `ensureFullAuth` — login **and** MFA-verified |
+| **Auth** | None — public, anonymous | `ensureFullAuth` — logged in; MFA-verified **only if** the user opted into MFA (it's off by default, OAuth logins skip it) |
 | **Persistence** | None | Full thread history in Redis, keyed by `conversationId` |
 | **Backend call** | `POST /api/preview/generate` (anonymous) | `POST /api/chat/message` → `POST/GET /api/chat/stream` (SSE) |
 | **Shape** | Single-turn, one LLM call per prompt | Multi-turn; every request replays the whole thread |
@@ -64,7 +64,7 @@ Editing `landing-builder.js` thinking you're improving the main chat app. You ar
 Before reporting a chat-surface customization complete:
 
 - [ ] Only the intended surface's files were modified. `git diff` shows no changes to the other surface.
-- [ ] The intended surface behaves correctly in a browser (not just in tests): `/` renders without a login redirect for anonymous users; `/chat` streams new turns and appears in `/conversation_history` for logged-in users.
+- [ ] The intended surface behaves correctly in a browser (not just in tests): `/` renders without a login redirect for anonymous users; `/chat` streams new turns and appears in `/conversation_history` for logged-in users (plus an MFA prompt if they've opted into MFA).
 - [ ] If the other surface was supposed to keep working, its smoke test (visit it, type a prompt, get a response) still passes.
 
 If any is false, do not report success.

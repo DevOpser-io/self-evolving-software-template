@@ -75,7 +75,6 @@ These appear on boot in normal local dev and are **not** errors:
 | Log line | What it means |
 |---|---|
 | `[S3] ERROR: S3_BUCKET_NAME environment variable is required` | S3 is only used by the site-image upload feature. The rest of the app works. Set `S3_BUCKET_NAME=` to any value in `.env` to silence it. |
-| `[StackSet] Error ensuring StackSet` | Managed-hosting cross-account bootstrap check. Not needed for self-hosting. |
 | `[OAuth] Google OAuth not configured` | Optional Google sign-in. Configure `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` only if the user wants Google sign-in. |
 | `Missing credentials for PLAIN` / Gmail SMTP init failure | Email transport disabled (intentional if `MAIL_USERNAME`/`MAIL_PASSWORD` are blank). See [`../../devopser-setup/rules/email.md`](../../devopser-setup/rules/email.md). |
 

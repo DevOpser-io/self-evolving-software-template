@@ -22,7 +22,8 @@ Examples already wired into the template:
 | Env var (production) | What it points at | Resolver |
 |---|---|---|
 | `MAIL_PASSWORD_SECRET_NAME` | Secret name holding the Gmail app password | `secretsManager.js` → `emailService.js` |
-| `POSTGRES_PASSWORD_SECRET_NAME` | Secret name holding the DB password | `secretsManager.js` → `config/database.js` |
+| `DB_PASSWORD_SECRET_NAME` | Secret name holding the DB password | `secretsManager.js` → `config/database.js` |
+| `DB_NAME_SECRET_NAME`, `DB_USER_SECRET_NAME`, `DB_HOST_SECRET_NAME`, `DB_PORT_SECRET_NAME` | Other DB connection bits — `backend/migrate.sh` requires the full set in production | `config/database.js`, `backend/migrate.sh` |
 
 Mirror the same pattern when you add a new subsystem. Do not hand-roll your own `AWS.SecretsManager` client.
 

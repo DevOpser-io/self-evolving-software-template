@@ -10,7 +10,7 @@ metadata:
 
 # DevOpser Setup
 
-Expert guidance for bringing the [DevOpser self-evolving software template](https://github.com/DevOpser-io/self-evolving-software-template) up on a developer laptop. Reuses the repo's own `scripts/setup.sh` and `run-migrations.sh` — this skill does not introduce new scripts. The canonical playbook is [`AGENTS.md`](../../AGENTS.md) → **"Quick setup for AI agents"**; the README's **"Opinionated variant (Bedrock)"** is the house style for rigor.
+Expert guidance for bringing the [DevOpser self-evolving software template](https://github.com/DevOpser-io/self-evolving-software-template) up on a developer laptop. Reuses the repo's own `scripts/setup.sh` and `run-migrations.sh` — this skill does not introduce new scripts. The canonical playbook is [`AGENTS.md`](../../AGENTS.md) → **"Quick setup (for AI agents)"**; the README's **"Opinionated variant (Bedrock, nothing to decide)"** is the house style for rigor.
 
 ## Rules
 

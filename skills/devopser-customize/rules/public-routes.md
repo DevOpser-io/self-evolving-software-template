@@ -14,43 +14,21 @@ The template has a **default-deny** auth model. Every route is private unless it
 2. It checks the request path against the `publicPaths` array (around `backend/server.js:411`).
 3. Matching is **prefix-based**: a path matches if it equals a listed entry exactly **or** starts with `<listed>/`. So `/static` covers `/static/js/bundle.js`; `/api` covers `/api/info`.
 4. If it matches → `next()`, handler runs.
-5. If it doesn't match:
+5. If it doesn't match and the user is unauthenticated:
    - **AJAX / JSON request** (`req.xhr` or `Accept: application/json`) → `401 { error: 'Authentication required' }`.
-   - **Regular browser request** → save `req.originalUrl` to `req.session.returnTo`, redirect to `/auth/login`. After login, user is sent back to `returnTo` (or `/sites` if nothing was saved).
+   - **Regular browser request** → bare `res.redirect('/auth/login')`. The **global** gate does **not** set `req.session.returnTo` — only the route-level `ensureAuthenticated` / `ensureFullAuth` / `ensureMfaVerified` middlewares do. If you want a post-login bounce back to the deep link the user requested, put one of those on the route instead of relying on the global gate.
 
 ## The current list
 
-As of the initial commit, `publicPaths` contains:
+Read it directly from [`backend/server.js`](../../../backend/server.js) around line 411 — do not trust any copy, including this one, because it drifts. Quick peek:
 
-```js
-const publicPaths = [
-  '/',                    // Landing page (anonymous preview chat)
-  '/mobile-builder.html',
-  '/mobile-app.html',
-  '/auth/login',
-  '/auth/signup',
-  '/auth/verify-email',
-  '/auth/resend-verification',
-  '/auth/forgot-password',
-  '/auth/reset-password',
-  '/auth/magic-link',
-  '/auth/mfa-verify',
-  '/auth/mfa-setup',
-  '/auth/mfa-backup-codes',
-  '/auth/send-mfa-code',
-  '/auth/google',
-  '/auth/google/callback',
-  '/mobile/auth',
-  '/static',
-  '/favicon.ico',
-  '/health',
-  '/api',                 // API info endpoints
-  '/api/health',
-  '/admin-panel',
-];
+```bash
+sed -n '411,435p' backend/server.js
 ```
 
-**Watch out:** `/api` is in the list, which means **every** `/api/foo` you add is public by default unless you think about it. If you're adding authenticated API endpoints, either nest them under a non-public prefix or gate them with `ensureFullAuth` on the route itself.
+The shape to expect: the landing page, the mobile entry HTML files, every `/auth/*` endpoint needed for sign-in / MFA / OAuth, `/mobile/auth`, `/static`, `/favicon.ico`, `/health`, the `/api` **prefix**, `/api/health`, and `/admin-panel`.
+
+**Watch out:** `/api` itself is listed as a prefix, which means **every** `/api/foo` you add is public by default unless you think about it. If you're adding authenticated API endpoints, either nest them under a non-public prefix (e.g. `/api/private/...`) or gate them explicitly with `ensureFullAuth` on the route itself.
 
 ## Adding a new anonymous route — both edits
 
@@ -84,19 +62,28 @@ curl -i http://localhost:8000/pricing
 - **`200`** → both edits are in place.
 - **`302` to `/auth/login`** → the `publicPaths` entry is missing, or its prefix doesn't match. Fix edit 2.
 
-## Requiring MFA on a new route
+## Route-level auth
 
-For routes where being "logged in" isn't enough and you want MFA-verified sessions only (e.g. `/account`, `/chat`, admin-panel things):
+`ensureFullAuth` in `backend/middleware/authMiddleware.js` is the thing to layer on top of the global gate when a route needs more than "request matched `publicPaths` or not":
 
 ```js
 const { ensureFullAuth } = require('../middleware/authMiddleware');
 
 router.get('/sensitive', ensureFullAuth, (req, res) => {
-  // Only MFA-verified users reach this handler.
+  // Login required; MFA step required only if this user has opted into MFA.
 });
 ```
 
-`ensureFullAuth` redirects unauthenticated users to `/auth/login` and MFA-incomplete users to `/auth/mfa-verify`, both with `returnTo` preserved.
+What it actually does today (read the source before relying on the docstring — this has moved before):
+
+- No session? → redirect to `/auth/login` (AJAX / mobile → `401`). Saves `req.originalUrl` to `req.session.returnTo`.
+- OAuth login (Google, etc.)? → pass. MFA is skipped for OAuth.
+- `req.user.mfaEnabled === true` but `req.session.mfaVerified !== true`? → redirect to `/auth/mfa-verify` (AJAX / mobile → `401 { mfa_required: true }`), `returnTo` preserved.
+- Otherwise → pass.
+
+MFA is **opt-in** template-wide — a freshly seeded `admin@example.com / adminpass` has `mfaEnabled=false`, so "logged in" is enough for them until they enable MFA from their account settings.
+
+If you want a truly MFA-mandatory route, you need to add your own gate that requires `req.user.mfaEnabled && req.session.mfaVerified`. Don't just stack `ensureFullAuth` and assume MFA was checked.
 
 ## Verification gate
 
