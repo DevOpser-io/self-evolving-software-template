@@ -9,6 +9,39 @@ A full-stack **SaaS starter template** — Express.js + Postgres + Redis with AI
 
 ---
 
+## Install the agent skills (optional, but recommended if you're driving this with an AI agent)
+
+This repo ships three [Agent Skills](https://agentskills.io/) — `devopser-setup`, `devopser-deploy`, `devopser-customize` — that teach your coding agent how to stand this template up, ship it to a real environment, and reshape it into your actual product. Install them once and any agent that supports skills will load them automatically when you ask about those topics.
+
+No central marketplace registration is needed — the GitHub repo itself is the distribution channel.
+
+### Claude Code (easiest if you already use Claude Code)
+
+Run these two slash commands inside any Claude Code session:
+
+```
+/plugin marketplace add DevOpser-io/self-evolving-software-template
+/plugin install devopser-agent-skills@DevOpser-io
+```
+
+Start a new session for the skills to register. Then ask Claude things like *"set this repo up for me locally"* or *"add a `/pricing` page"* and it will consult the matching skill.
+
+### Any other agent (Gemini CLI, Cursor, Copilot, OpenCode, Codex, etc.)
+
+One universal command — the [`skills` CLI](https://skills.sh/) detects your installed agent and puts the files where it looks for them:
+
+```bash
+npx skills add https://github.com/DevOpser-io/self-evolving-software-template --all
+```
+
+### Verifying the install
+
+Ask the agent: *"Set this repo up for me locally. I'm on AWS and want to use Bedrock."* If the skills loaded, the agent asks the Bedrock / OpenAI / Anthropic question verbatim **before** touching anything, runs `./scripts/setup.sh` and relays errors verbatim, and runs a four-check verification gate (`/auth/login` → 200, `/health` → 200, `Server running on…` log line, Bedrock identity log line) before declaring "done."
+
+Full per-agent install matrix and troubleshooting: [`skills/README.md`](./skills/README.md).
+
+---
+
 ## Fast path — one command
 
 If you have **Node 20+** and **Docker** installed, the fastest way to stand up a working local copy is:
