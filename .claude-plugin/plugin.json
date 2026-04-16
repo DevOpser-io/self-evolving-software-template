@@ -1,0 +1,27 @@
+{
+  "name": "devopser-agent-skills",
+  "description": "Setup, deploy, and customize skills for the DevOpser self-evolving software template",
+  "version": "1.0.0",
+  "author": {
+    "name": "DevOpser",
+    "email": "info@devopser.io"
+  },
+  "homepage": "https://github.com/DevOpser-io/self-evolving-software-template",
+  "repository": "https://github.com/DevOpser-io/self-evolving-software-template",
+  "license": "Apache-2.0",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "plugin",
+    "skills",
+    "ai-agent",
+    "agentic",
+    "saas-template",
+    "bedrock",
+    "openai",
+    "anthropic",
+    "express",
+    "postgres",
+    "template"
+  ]
+}
