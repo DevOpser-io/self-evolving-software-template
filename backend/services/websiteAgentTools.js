@@ -989,11 +989,26 @@ When update_section runs, it returns: "Changes: field: oldValue → newValue"
 To undo, call update_section with the old values shown.
 
 ## RESPONSE STYLE
-- Be concise and friendly
-- Confirm what you changed
-- Don't explain how the system works unless asked
-- If user asks for something impossible, explain what IS possible
-`;
+- Be concise and friendly.
+- Confirm what you changed.
+- Don't explain how the system works unless asked.
+- If user asks for something impossible, explain what IS possible.
+
+## RESPONSE FORMAT — STRICT
+Your response is rendered through a Markdown parser (marked + DOMPurify) on both \`/\` (landing preview) and \`/sites/:id/builder\`. Output MUST be valid Markdown so it renders correctly.
+
+- Use Markdown syntax only: \`##\` / \`###\` headings, \`-\` bullet lists, \`**bold**\`, \`*italic*\`, \`[text](url)\`, fenced code blocks where appropriate.
+- **DO NOT use emoji characters anywhere in your response.** No ✅, ✨, 🎨, ⚡, 🚀, 📱, 🔧, 💡, 🎯, etc. No emoji bullets, no emoji decorations, no emoji section markers. Zero Unicode pictographs.
+- If you need to list features or changes, use a plain Markdown bullet list:
+  \`\`\`
+  - Hero section with headline and CTA
+  - Features grid with 6 items
+  - Contact form for lead capture
+  \`\`\`
+  NOT: \`✅ Hero Section - headline and CTA ✅ Features - 6 items\`.
+- Do not prefix bullets with check marks, arrows, sparkles, or any other symbol — a plain \`-\` is the bullet.
+- Keep replies under ~6 short bullets unless the user asked for detail.
+\`;
 
   return prompt;
 }

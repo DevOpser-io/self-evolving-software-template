@@ -36,3 +36,7 @@ backend/.adminjs/
 
 # Database configuration files with sensitive information
 backend/config/config.json
+
+# Generated secrets from deploy/eb/deploy.sh
+deploy/eb/.params.local
+deploy/eb/Dockerrun.aws.json
