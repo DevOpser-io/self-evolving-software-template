@@ -17,14 +17,21 @@ No central marketplace registration is needed — the GitHub repo itself is the 
 
 ### Claude Code (easiest if you already use Claude Code)
 
-Run these two slash commands inside any Claude Code session:
+Run these two slash commands inside any Claude Code session — **one at a time**, pressing Enter between them. Do not paste both lines together; Claude Code treats a single submission as one command, and the second line will be appended as an argument to the first, which fails.
+
+First, register the marketplace:
 
 ```
 /plugin marketplace add DevOpser-io/self-evolving-software-template
-/plugin install devopser-agent-skills@DevOpser-io
 ```
 
-Start a new session for the skills to register. Then ask Claude things like *"set this repo up for me locally"* or *"add a `/pricing` page"* and it will consult the matching skill.
+Then install the skills plugin from it:
+
+```
+/plugin install devopser-agent-skills@devopser-io
+```
+
+The `@devopser-io` suffix is the marketplace name (defined in this repo's `.claude-plugin/marketplace.json`), not the GitHub org. Start a new session for the skills to register. Then ask Claude things like *"set this repo up for me locally"* or *"add a `/pricing` page"* and it will consult the matching skill.
 
 ### Any other agent (Gemini CLI, Cursor, Copilot, OpenCode, Codex, etc.)
 
