@@ -110,7 +110,7 @@ Do not report "setup complete" until the curl returns 200 **and** you've checked
 After the app is running, the human will usually want one or more of:
 
 - **Their actual product** — ask what they're building, then reshape routes/models/UI (see the extension points section below)
-- **A deployment target** — pick one and wire it into `backend/routes/sites.js → triggerDeployment()` (see the deployment section)
+- **A deployment target** — pick one and wire it into `backend/routes/sites.js → triggerDeployment()` (see the deployment section). A working single-tenant reference implementation for **AWS Elastic Beanstalk** already exists at [`deploy/eb/`](deploy/eb/README.md) — if the human asks for EB, read `deploy/eb/README.md` first and extend from there; do NOT write new CloudFormation from scratch.
 - **Billing** — Stripe / Paddle / usage metering
 - **Real email** — fill in `MAIL_*` in `.env` with Gmail app password or SES config
 
@@ -355,6 +355,8 @@ router.get('/sensitive', ensureFullAuth, (req, res) => {
 
 ## Adding a deployment target
 
+> **If the human asks for AWS Elastic Beanstalk specifically, stop and read [`deploy/eb/README.md`](deploy/eb/README.md) first.** A working single-tenant reference implementation is already committed there (CloudFormation + deploy script + Dockerfile.eb + entrypoint). It stands up its own VPC, RDS PostgreSQL, ElastiCache Redis, ECR repo, instance IAM role with `bedrock:InvokeModel`, and Secrets Manager entries for DB creds. Extend or customize that module; do not re-derive it from scratch.
+
 The `Publish` button in the website builder currently hits a stub that marks every deployment as `not_configured`. Your job when a human asks for "deploy this to X" is to:
 
 1. **Pick the target** based on what the human has and how they want to bill/tenant it.
@@ -367,7 +369,8 @@ The `Publish` button in the website builder currently hits a stub that marks eve
 
 | Target | When to pick it |
 |---|---|
-| **Amazon Lightsail (container service)** | Small-to-medium sites, predictable monthly pricing, you're already on AWS, want minimal surface area. Good default recommendation for cost-conscious users. |
+| **AWS Elastic Beanstalk (single-instance Docker)** | **Reference implementation already exists in [`deploy/eb/`](deploy/eb/README.md).** Cheapest AWS-native single-tenant path, self-contained (its own VPC/RDS/Redis), rolls in ~20 min on a cold account. Pick this if the human wants AWS and doesn't specifically ask for something else. |
+| **Amazon Lightsail (container service)** | Small-to-medium sites, predictable monthly pricing, you're already on AWS, want minimal surface area. Alternative to EB if you specifically want Lightsail's fixed-price container pricing model. |
 | **Google Cloud Run** | Serverless containers, scales to zero, pay-per-request, you're already on GCP. Minimal ops. |
 | **Fly.io / Railway / Render** | Global edge, push-to-deploy UX, small team, no dedicated DevOps. |
 | **AWS ECS + Fargate** | You want AWS-native autoscaling, ALB integration, IAM-gated service-to-service auth, but don't want to run a cluster. |
@@ -420,6 +423,32 @@ The stub in `backend/routes/sites.js` is the single integration point. Your impl
 7. Call `deployment.markAsSuccess(<identifier>)` on success or `deployment.markAsFailed(<reason>)` on failure.
 
 Keep the heavy lifting in a new file under `backend/services/deploy/` rather than cramming it into `routes/sites.js`.
+
+### CORS for deployed environments (every deployment target — read before shipping)
+
+`backend/server.js:49-95` uses a **default-deny CORS allowlist**. Any origin that doesn't match one of the rules below gets a `500` + `Error: Not allowed by CORS` and the app never even reaches the handler. This bites every first-time deploy because the deploy target's public hostname is never in the allowlist by default.
+
+The three allow rules, in order:
+
+1. **`origin` is falsy** (mobile apps, Postman, server-to-server) → allowed.
+2. **`localhost`** on any port, http or https → allowed (dev only).
+3. **`DOMAIN` env var** → allows `https://<anything>.${DOMAIN}` (subdomain pattern, `https` only). Use this when you own a domain and are running a multi-tenant platform under `*.yourdomain.com`.
+4. **`CUSTOM_DOMAIN` env var** → comma-separated list of exact hostnames, matched as either `http://<host>` or `https://<host>`. Use this for single-tenant deploys or when the hostname doesn't fit the subdomain pattern (e.g. EB default URLs, Cloud Run default URLs, ngrok tunnels).
+
+**Symptom when CORS is misconfigured:**
+- Browser: `POST /api/preview/generate` returns HTTP 500.
+- Container log: `CORS blocked origin: http://your-deploy-hostname ... Error: Not allowed by CORS`.
+- It looks like the LLM is broken; it isn't — the request never reaches the LLM layer.
+
+**Required: wire the deploy hostname into `CUSTOM_DOMAIN` automatically.** Do NOT leave this as a "user fills in `.env` later" step — every first-time user will hit the CORS 500 and think Bedrock / OpenAI / Anthropic is broken. For any deployment target you add (`triggerDeployment()` or a top-level `deploy/<target>/`), the deploy script or IAC must:
+
+1. Read the target's assigned public hostname **after** provisioning (often only available post-create — EB CNAME, Cloud Run URL, ECS ALB DNS, etc.).
+2. Patch it into the running environment's `CUSTOM_DOMAIN` var (e.g. `aws elasticbeanstalk update-environment`, `gcloud run services update`, `aws ecs update-service` with task-def revision).
+3. Wait for the update to roll out before printing the "Deploy complete" banner.
+
+The EB reference implementation at [`deploy/eb/deploy.sh`](deploy/eb/deploy.sh) does this explicitly — copy the pattern.
+
+If the deploy will later be fronted by a custom domain + TLS via ACM/Cloudflare/Let's Encrypt, add that hostname to `CUSTOM_DOMAIN` **in addition to** the cloud-provider default URL, not instead of — users will hit both during the cutover.
 
 ---
 

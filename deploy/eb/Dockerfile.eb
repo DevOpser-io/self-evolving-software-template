@@ -1,0 +1,11 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+USER root
+COPY deploy/eb/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    apt-get update && apt-get install -y --no-install-recommends awscli curl && \
+    rm -rf /var/lib/apt/lists/*
+
+USER node
+CMD ["/app/entrypoint.sh"]
