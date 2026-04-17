@@ -1,0 +1,19 @@
+{
+  "name": "devopser-io",
+  "owner": {
+    "name": "DevOpser",
+    "email": "info@devopser.io"
+  },
+  "metadata": {
+    "description": "DevOpser skills for the self-evolving software template"
+  },
+  "plugins": [
+    {
+      "name": "devopser-agent-skills",
+      "source": "./",
+      "description": "Setup, deploy, and customize skills for the DevOpser self-evolving software template",
+      "homepage": "https://github.com/DevOpser-io/self-evolving-software-template",
+      "license": "Apache-2.0"
+    }
+  ]
+}
